@@ -13,6 +13,7 @@ from collections.abc import AsyncGenerator, Coroutine
 from pathlib import Path
 from typing import Any, Literal
 
+from .batches import BatchesNamespace
 from .catalog import ModelCatalog
 from .config import load_env_file
 from .fallback import classify_error, run_fallback_loop
@@ -22,6 +23,7 @@ from .models import (
     Choice,
     ChoiceMessage,
     DeltaMessage,
+    Doc,
     EmbeddingDimensionError,
     EmbeddingItem,
     EmbeddingResponse,
@@ -31,6 +33,7 @@ from .models import (
 from .providers.base import ProviderHttpError
 from .providers.registry import PROVIDERS, ProviderSpec, get_spec
 from .router import LLMRouter, ModelCandidate, RouteResult
+from .structured import structured
 
 
 class LLMClient:
@@ -126,6 +129,10 @@ class LLMClient:
         return ChatNamespace(self)
 
     @property
+    def batches(self) -> "BatchesNamespace":
+        return BatchesNamespace(self)
+
+    @property
     def embeddings(self) -> "EmbeddingsNamespace":
         return EmbeddingsNamespace(self)
 
@@ -208,12 +215,55 @@ class ChatNamespace:
             options["tools"] = tools
         if tool_choice:
             options["tool_choice"] = tool_choice
+        schema = kwargs.pop("response_schema", None)
+        documents = kwargs.pop("documents", None)
+        citations = kwargs.pop("citations", False)
+        cache = kwargs.pop("cache", None)
         options.update(kwargs)
+        if documents:
+            options["documents"] = [
+                d.model_dump() if isinstance(d, Doc) else dict(d) for d in documents
+            ]
+            options["citations"] = bool(citations)
+        if cache:
+            n_chat = sum(1 for m in messages if m.get("role") != "system")
+            for t in cache:
+                ok = t in ("system", "tools") or (
+                    isinstance(t, int) and not isinstance(t, bool) and -n_chat <= t < n_chat
+                )
+                if not ok:
+                    raise ValueError(
+                        f"cache target {t!r}: use 'system', 'tools' or the index of a non-system message"
+                    )
+            options["cache"] = list(cache)
+        if schema is not None:
+            if stream:
+                raise ValueError("response_schema cannot be combined with stream=True")
+            return self._create_structured(
+                model, messages, options, abort_signal, capability, schema
+            )
 
         if stream:
             return self._stream_create(model, messages, options, abort_signal, capability)
         else:
             return self._create(model, messages, options, abort_signal, capability)
+
+    async def _create_structured(
+        self,
+        model: str,
+        messages: list[dict[str, Any]],
+        options: dict[str, Any],
+        abort_signal: asyncio.Event | None,
+        capability: str,
+        schema: Any,
+    ) -> Any:
+        """Chat completion validated into ``schema`` (one repair retry; see :mod:`tsp.ai.structured`)."""
+
+        async def call(msgs: list[dict[str, Any]]) -> ChatCompletionResponse:
+            return await self._create(model, msgs, options, abort_signal, capability)
+
+        parsed, _ = await structured(call, messages, schema)
+        return parsed
 
     async def _create(
         self,
@@ -230,6 +280,7 @@ class ChatNamespace:
         ):
             """Dispatch to the selected provider."""
             start = time.time()
+            messages, options = _for_provider(route.provider, messages, options)
             try:
                 response = await route.provider.chat_completion(
                     route.key.api_key,
@@ -279,6 +330,7 @@ class ChatNamespace:
                 ],
                 usage=result.get("usage"),
                 routed_via=result.get("routed_via"),
+                citations=result.get("citations"),
             )
         else:
             raise RuntimeError("Failed to get a response from any provider")
@@ -364,6 +416,36 @@ class _SyncChat:
             return owner._run(chat.create(*args, **{**kwargs, "stream": False}))
         agen = chat.create(*args, **{**kwargs, "stream": True})
         return owner._iterate(agen)
+
+
+def _for_provider(
+    provider: Any, messages: list[dict[str, Any]], options: dict[str, Any]
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Providers without native document support get the documents as quoted text in the last user
+    message (no citations come back); the Anthropic-only ``cache`` hint is dropped for them."""
+    if not options.get("documents") and not options.get("cache"):
+        return messages, options
+    opts = dict(options)
+    if provider.platform != "anthropic":
+        opts.pop("cache", None)
+    docs = opts.get("documents")
+    if docs and not provider.supports_citations:
+        opts.pop("documents"), opts.pop("citations", None)
+        quoted = "\n\n".join(
+            f'<document id="{d["id"]}" title="{d.get("title") or d["id"]}">\n{d["text"]}\n</document>'
+            for d in docs
+        )
+        msgs = [dict(m) for m in messages]
+        for m in reversed(msgs):
+            if m.get("role") == "user":
+                m["content"] = (
+                    quoted + "\n\n" + (m["content"] if isinstance(m["content"], str) else "")
+                )
+                break
+        else:
+            msgs.append({"role": "user", "content": quoted})
+        return msgs, opts
+    return messages, opts
 
 
 class EmbeddingsNamespace:

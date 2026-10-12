@@ -96,3 +96,34 @@ python/packages/ai/src/tsp/ai/
 ```
 
 Adding an OpenAI-compatible provider is one line in `providers/registry.py`; the client, `from_env` and `verify` pick it up.
+
+## Prompt caching, documents with citations, structured output, batches, translation
+
+```python
+# Prompt caching (Anthropic): mark the long, stable parts. Targets: "system", "tools", or the index of a
+# non-system message. usage.cache_read_tokens / cache_write_tokens say how much of prompt_tokens was cached.
+resp = await client.chat.create(model="claude-sonnet-5-5", messages=msgs, cache=["system", 0])
+
+# Documents the model may quote. Anthropic returns citations; other providers get the text inline
+# (quoted in the last user message) and no citations.
+resp = await client.chat.create(
+    model="claude-sonnet-5-5", messages=[{"role": "user", "content": "How do I start?"}],
+    documents=[Doc(id="r1", text="...", title="Pancakes")], citations=True,
+)
+resp.citations   # [Citation(doc_id="r1", start=4, end=19, quoted_text="Whisk the eggs.")]
+
+# Structured output on any provider: validated pydantic model, one repair retry (see tsp.ai.structured).
+verdict = await client.chat.create(model="auto", messages=msgs, response_schema=Verdict)
+
+# Message Batches (Anthropic): asynchronous, half price (BATCH_DISCOUNT). Collect later.
+batch_id = await client.batches.submit([BatchRequest("a", "claude-sonnet-5-5", msgs, {"max_tokens": 500})])
+status = await client.batches.poll(batch_id)          # .done once ended; can take up to 24 hours
+results = await client.batches.results(batch_id)      # BatchResult(custom_id, status, response, error)
+
+# Translation that keeps your terms: each glossary term found in the source must appear in its required
+# form; one retry names the missing ones, and what is still missing is reported, not hidden.
+t = await translate(client, text, "Hindi", {"sourdough": "खट्टा आटा"}, model="auto")
+t.text, t.flagged, t.missing
+```
+
+Notes: a system message is sent as Anthropic's top-level `system` field. `response_schema` cannot be combined with `stream=True`. In the sample API, `tsp_api.ai_batches` records submitted batches in `ai_batches` and the `ai.batch.collect` job (every 5 minutes) stores the results once they end; read them with `batch_results(session, org_id, batch_id)`. Price batch usage at `BATCH_DISCOUNT` of the normal rate.

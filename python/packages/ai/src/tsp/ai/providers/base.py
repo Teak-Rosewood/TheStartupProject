@@ -35,6 +35,11 @@ class BaseProvider(ABC):
         """Whether this provider has a free tier that needs no API key."""
         return False
 
+    @property
+    def supports_citations(self) -> bool:
+        """Whether ``documents=`` are passed natively and answers carry citations."""
+        return False
+
     @abstractmethod
     async def chat_completion(
         self,
