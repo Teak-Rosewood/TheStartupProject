@@ -11,7 +11,7 @@ import trafilatura
 
 from .errors import FetchError, TooLarge, TooManyRedirects, UnsupportedContentType
 from .page import NotModified, Page, content_hash
-from .safe_url import Resolver, safe_url
+from .safe_url import ResolvedURL, Resolver, safe_url
 from .urls import normalise
 
 DEFAULT_USER_AGENT = "TSPBot/1.0 (+https://example.com/bot)"
@@ -99,6 +99,10 @@ class HttpFetcher:
         self.user_agent = user_agent
         self._resolver = resolver
         self._ports = allowed_ports
+
+    async def check_url(self, url: str) -> ResolvedURL:
+        """Validate ``url`` with this fetcher's resolver and port rules, without fetching it."""
+        return await safe_url(url, resolver=self._resolver, allowed_ports=self._ports)
 
     async def aclose(self) -> None:
         await self._client.aclose()
