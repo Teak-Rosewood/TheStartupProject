@@ -1,0 +1,24 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "tsp-pipeline"
+version = "0.1.0"
+description = "Durable multi-step AI workflows on Postgres jobs: checkpoints, retries, budgets, traces, human steps and a versioned prompt registry."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+dependencies = ["sqlalchemy[asyncio]>=2", "fastapi>=0.110", "pydantic>=2", "tsp-db", "tsp-jobs", "tsp-flags", "tsp-ai"]
+
+[project.scripts]
+tsp-pipeline = "tsp.pipeline.cli:main"
+
+[tool.uv.sources]
+tsp-db = { workspace = true }
+tsp-jobs = { workspace = true }
+tsp-flags = { workspace = true }
+tsp-ai = { workspace = true }
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/tsp"]

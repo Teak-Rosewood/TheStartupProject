@@ -27,6 +27,7 @@ members = [
     "tsp-nosql",
     "tsp-notify",
     "tsp-payments",
+    "tsp-pipeline",
     "tsp-server",
     "tsp-storage",
 ]
@@ -3844,6 +3845,32 @@ requires-dist = [
     { name = "tomli", marker = "python_full_version < '3.11'", specifier = ">=2" },
     { name = "tsp-audit", editable = "packages/audit" },
     { name = "tsp-db", editable = "packages/db" },
+]
+
+[[package]]
+name = "tsp-pipeline"
+version = "0.1.0"
+source = { editable = "packages/pipeline" }
+dependencies = [
+    { name = "fastapi" },
+    { name = "pydantic" },
+    { name = "sqlalchemy", version = "2.0.54", source = { registry = "https://pypi.org/simple" }, extra = ["asyncio"], marker = "python_full_version < '3.11'" },
+    { name = "sqlalchemy", version = "2.1.4", source = { registry = "https://pypi.org/simple" }, extra = ["asyncio"], marker = "python_full_version >= '3.11'" },
+    { name = "tsp-ai" },
+    { name = "tsp-db" },
+    { name = "tsp-flags" },
+    { name = "tsp-jobs" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastapi", specifier = ">=0.110" },
+    { name = "pydantic", specifier = ">=2" },
+    { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2" },
+    { name = "tsp-ai", editable = "packages/ai" },
+    { name = "tsp-db", editable = "packages/db" },
+    { name = "tsp-flags", editable = "packages/flags" },
+    { name = "tsp-jobs", editable = "packages/jobs" },
 ]
 
 [[package]]
