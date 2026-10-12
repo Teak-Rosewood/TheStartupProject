@@ -145,3 +145,16 @@ async def test_ipv6_pinned_in_brackets():
     client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
     await HttpFetcher(client, resolver=resolve).fetch("https://v6.example.com/")
     assert seen[0].url.host == "2606:2800:220:1::1"
+
+
+async def test_custom_headers_not_leaked_to_redirect_target():
+    seen = {}
+
+    def handler(req):
+        seen[req.headers["host"]] = req.headers.get("x-api-key")
+        if req.headers["host"] == "help.example.com":
+            return httpx.Response(302, headers={"location": "https://evil.test/"})
+        return httpx.Response(200, headers={"content-type": "application/json"}, content=b"{}")
+
+    await make(handler).fetch_raw("https://help.example.com/", headers={"x-api-key": "k"})
+    assert seen == {"help.example.com": "k", "evil.test": None}

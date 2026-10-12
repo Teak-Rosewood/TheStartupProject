@@ -104,13 +104,18 @@ class HttpFetcher:
         await self._client.aclose()
 
     async def fetch_raw(
-        self, url: str, *, etag: str | None = None, last_modified: str | None = None
+        self,
+        url: str,
+        *,
+        etag: str | None = None,
+        last_modified: str | None = None,
+        headers: dict[str, str] | None = None,
     ) -> RawResponse:
-        headers = {"User-Agent": self.user_agent, "Accept-Encoding": "gzip, deflate"}
-        if etag:
-            headers["If-None-Match"] = etag
-        if last_modified:
-            headers["If-Modified-Since"] = last_modified
+        """GET without content conversion. ``headers`` (for example an API key) are sent only to
+        ``url``'s host: they are dropped if a redirect leaves it."""
+        base = {"User-Agent": self.user_agent, "Accept-Encoding": "gzip, deflate"}
+        origin = urlsplit(url).netloc.lower()
+        headers_in = dict(headers or {})
         current = url
         for _ in range(self.max_redirects + 1):
             target = await safe_url(current, resolver=self._resolver, allowed_ports=self._ports)
@@ -120,6 +125,11 @@ class HttpFetcher:
             connect = urlunsplit(
                 (target.scheme, f"{ip}:{target.port}", parts.path or "/", parts.query, "")
             )
+            headers = {**base, **headers_in} if parts.netloc.lower() == origin else dict(base)
+            if etag:
+                headers["If-None-Match"] = etag
+            if last_modified:
+                headers["If-Modified-Since"] = last_modified
             host_header = (
                 target.host if target.port == default_port else f"{target.host}:{target.port}"
             )
