@@ -4,13 +4,21 @@ from pathlib import Path
 
 from .api import build_router
 from .budget import BudgetExceeded, Price, UnpricedModel
-from .models import Event, Prompt, PromptActive, Run, Step
+from .evals import Case, EvalReport, Suite, load_suite, prompt_target, run_eval
+from .models import EvalRun, Event, Prompt, PromptActive, Run, Step
 from .prompts import PromptRegistry, PromptVersion, parse_prompt_file
 from .runner import PipelineDisabled, Runner, StepContext
 from .workflow import Workflow
 
 __all__ = [
     "BudgetExceeded",
+    "Case",
+    "EvalReport",
+    "EvalRun",
+    "Suite",
+    "load_suite",
+    "prompt_target",
+    "run_eval",
     "Event",
     "PipelineDisabled",
     "Price",
