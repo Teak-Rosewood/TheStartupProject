@@ -34,6 +34,22 @@ Blocks of type `ai_assistance`, `methodology` or `conflict` in `version.disclosu
 
 `build_router(principal, session)` serves `/cms/items` (create, read, versions, submit, approve, request-changes, schedule, publish, unpublish). `principal` is your dependency returning `Principal(org_id, sub, roles)`. Role `editor` can create, edit and submit; role `reviewer` can approve, request changes, schedule, publish and unpublish. A blocked publish returns 409 with the failed checks.
 
+## Corrections and updates log
+
+Replacing a published version needs a `kind` (`correction`, `clarification` or `update`) and a `public_note`; `publish(..., kind=, public_note=, internal_note=)` refuses without them and leaves the old version live. A scheduled republish takes the same fields at `schedule` time and applies them when the job publishes. `add_note` adds a log entry without a new version (a clarification, or the outcome of a complaint). The internal note stays in the CMS.
+
+`build_public_router(session, org, base_url=)` serves the log without sign-in, cached for five minutes: `GET /public/cms/corrections` (all items), `GET /public/cms/items/{slug}/corrections`, and the same as RSS at `…/corrections.rss`. `org` is a fixed organization id or a function of the request (for example the Host header). Only entries of published items appear.
+
+## Review cadence and freezing
+
+Publishing sets `review_due_at` to `review_after_days` later (default 30; override per item type with `LifecycleConfig(by_type={"news": (7, 3)})`). The daily `cms.lifecycle` job opens a review for items that are due and calls your `notify_review_due(item, deadline)` hook once (wire it to `tsp.notify`; it is not wired in the sample app). If nobody decides within `auto_freeze_after_days` (default 7) the item is frozen: `lifecycle="frozen"`, `frozen_reason="auto"`, and a public update note ("This article is no longer updated as of 9 April 2026.", in the item's language if a translation is configured). The job is safe to run twice.
+
+Editors decide with `decide_review(org, item_id, "living" | "frozen", actor, reason)`: `living` starts a new cycle (living items freeze too if a later review goes undecided), `frozen` freezes at once. `unfreeze` (reason required) returns a frozen item to `living`. Corrections can still be published to a frozen item and do not restart reviews. Jobs that rewrite, translate or re-fetch published content should skip anything for which `is_refreshable(item)` is false.
+
+The editor API gains `POST /cms/items/{id}/review`, `/unfreeze` and `/notes`, and `publish` and `schedule` accept the correction fields.
+
+Rollback: migration `cms_0002` only adds the `cms_corrections` and `cms_reviews` tables; downgrading drops them (the log is lost, content is not).
+
 ## Not built yet
 
-The rest of the K4 brief: corrections and updates log with the public feed, review cadence with auto-freeze, the complaints desk with deadlines and escalation, restricted-mode windows, admin views, and compliance export/erasure for complainant data.
+The complaints desk with deadlines and escalation and restricted-mode windows (K4-C), admin views, wiring the review reminder and the public feed into the sample app, and compliance export/erasure for complainant data.

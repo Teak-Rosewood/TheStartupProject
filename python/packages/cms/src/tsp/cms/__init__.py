@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from .api import Principal, build_router
+from .api import Principal, build_public_router, build_router
 from .checks import (
     AllVariantsReady,
     CheckRegistry,
@@ -13,7 +13,16 @@ from .checks import (
     default_registry,
 )
 from .jobs import register_jobs
-from .models import CheckResultRow, DisclosureTemplate, Item, Variant, Version
+from .lifecycle import LifecycleConfig, is_refreshable
+from .models import (
+    CheckResultRow,
+    Correction,
+    DisclosureTemplate,
+    Item,
+    Review,
+    Variant,
+    Version,
+)
 from .service import CmsError, CmsService, Diff, PublishBlocked
 
 __all__ = [
@@ -23,17 +32,22 @@ __all__ = [
     "CheckResultRow",
     "CmsError",
     "CmsService",
+    "Correction",
     "Diff",
     "DisclosurePresent",
     "DisclosureTemplate",
     "Item",
+    "LifecycleConfig",
     "Principal",
     "PublishBlocked",
     "PublishCheck",
+    "Review",
     "RequiredFields",
     "Variant",
     "Version",
+    "build_public_router",
     "build_router",
+    "is_refreshable",
     "default_registry",
     "migrations_path",
     "register_jobs",
