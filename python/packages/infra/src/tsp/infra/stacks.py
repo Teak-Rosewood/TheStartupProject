@@ -26,7 +26,7 @@ from .nag import acknowledge_known
 from .network import Network
 from .nosql import Store
 from .observability import Alarms, EdgeAlarms
-from .product import AiGateway, Uploads, Vector
+from .product import AiGateway, Crawl, Uploads, Vector
 
 # Feature flags the constructs rely on; a plain ``cdk.App()`` would silently use legacy behavior.
 APP_CONTEXT = {
@@ -75,6 +75,7 @@ class RegistryStack(cdk.Stack):
 
         self.api = repo("api")
         self.postgres = repo("postgres")
+        self.crawl_render = repo("crawl-render") if config.crawl.render == "fargate" else None
         cdk.CfnOutput(self, "ApiRepositoryUri", value=self.api.repository_uri)
         cdk.CfnOutput(self, "PostgresRepositoryUri", value=self.postgres.repository_uri)
 
@@ -133,6 +134,18 @@ class BackendStack(cdk.Stack):
         self.uploads = Uploads(self, "Uploads", config=config) if config.uploads.enabled else None
         self.ai = AiGateway(self, "Ai", config=config)
         self.vector = Vector(self, "Vector", config=config)
+        self.crawl = (
+            Crawl(
+                self,
+                "Crawl",
+                config=config,
+                host=self.host,
+                vpc=self.network.vpc,
+                repository=registry.crawl_render,
+            )
+            if config.crawl.enabled
+            else None
+        )
         self.growth = Growth(self, "Growth", config=config)
         self.mail = Mail(self, "Mail", config=config) if config.notify.enabled else None
         self.admin_pool = AdminPool(self, "Staff", config=config) if config.admin.enabled else None
@@ -155,6 +168,9 @@ class BackendStack(cdk.Stack):
         secrets = dict(self.postgres.secrets)
         environment.update(self.ai.environment)
         environment.update(self.vector.environment)
+        if self.crawl:
+            environment.update(self.crawl.environment)
+            secrets.update(self.crawl.secrets)
         secrets.update(self.ai.secrets)
         if self.uploads:
             environment.update(self.uploads.environment)

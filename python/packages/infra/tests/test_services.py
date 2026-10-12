@@ -756,3 +756,78 @@ def test_s3vectors_mode_passes_security_checks():
     AppStage(app, "t", config=make_config(vector=VectorConfig(mode="s3vectors")))
     enable_checks(app)
     app.synth()
+
+
+# -- website ingestion -------------------------------------------------------------------------
+
+
+def test_crawl_off_by_default_adds_nothing():
+    t = backend()
+    assert not json.dumps(t.to_json()).count("CRAWL_")
+    assert not [
+        r
+        for r in t.find_resources("AWS::ECS::TaskDefinition").values()
+        if r["Properties"].get("RequiresCompatibilities") == ["FARGATE"]
+    ]
+
+
+def test_render_needs_crawl_enabled():
+    from tsp.infra import CrawlConfig
+
+    with pytest.raises(ValueError, match="crawl.enabled"):
+        CrawlConfig(render="fargate")
+
+
+def test_fargate_render_task_is_locked_down_and_the_api_gets_the_token():
+    from tsp.infra import CrawlConfig
+
+    t = backend(crawl=CrawlConfig(enabled=True, render="fargate", idle_exit_minutes=5))
+    (task,) = [
+        r["Properties"]
+        for r in t.find_resources("AWS::ECS::TaskDefinition").values()
+        if r["Properties"].get("RequiresCompatibilities") == ["FARGATE"]
+    ]
+    assert task["RuntimePlatform"]["CpuArchitecture"] == "ARM64"
+    (c,) = task["ContainerDefinitions"]
+    env = {e["Name"]: e["Value"] for e in c["Environment"]}
+    assert (
+        env["CRAWL_API_URL"] == "https://app.example.com/api"
+        and env["CRAWL_IDLE_EXIT_MINUTES"] == "5"
+    )
+    assert [s["Name"] for s in c["Secrets"]] == ["CRAWL_RENDER_TOKEN"]
+    # nothing in the task role: the worker needs no AWS permissions at all
+    role_ref = task["TaskRoleArn"]["Fn::GetAtt"][0]
+    policies = [
+        p
+        for p in t.find_resources("AWS::IAM::Policy").values()
+        if any(r.get("Ref") == role_ref for r in p["Properties"]["Roles"])
+    ]
+    assert policies == []
+    # no inbound at all on its security group
+    (sg,) = [
+        r["Properties"]
+        for r in t.find_resources("AWS::EC2::SecurityGroup").values()
+        if "Render worker" in r["Properties"].get("GroupDescription", "")
+    ]
+    assert not sg.get("SecurityGroupIngress")
+    assert all(e.get("CidrIp") == "0.0.0.0/0" for e in sg["SecurityGroupEgress"])
+    # the API container gets the switch and the token
+    api = next(
+        c
+        for r in t.find_resources("AWS::ECS::TaskDefinition").values()
+        for c in r["Properties"]["ContainerDefinitions"]
+        if any(e["Name"] == "CRAWL_RENDER" for e in c.get("Environment", []))
+        and c["Name"] != "render"
+    )
+    assert "CRAWL_RENDER_TOKEN" in [s["Name"] for s in api["Secrets"]]
+    outputs = json.dumps(t.to_json()["Outputs"])
+    assert "aws ecs run-task" in outputs and "FARGATE_SPOT" in outputs
+
+
+def test_fargate_render_passes_security_checks():
+    from tsp.infra import CrawlConfig
+
+    app = new_app()
+    AppStage(app, "t", config=make_config(crawl=CrawlConfig(enabled=True, render="fargate")))
+    enable_checks(app)
+    app.synth()
