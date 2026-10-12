@@ -13,6 +13,7 @@ A cloneable kit of building blocks for starting a company's software: pick the m
 | Postgres job queue and schedules; email, push, SMS, in-app notifications | tsp-jobs, tsp-notify | [docs/modules/jobs-notify.md](docs/modules/jobs-notify.md) |
 | Waitlist, first-party events, attribution, referrals, metrics | tsp-growth | [docs/modules/growth.md](docs/modules/growth.md) |
 | Feature flags and kill switches, direct-to-S3 uploads, usage metering and the AI gateway | tsp-flags, tsp-storage, tsp-metering | [docs/modules/product-ops.md](docs/modules/product-ops.md) |
+| Newsletters, share cards, JSON-LD, sitemaps, AI illustration labels | `tsp-distribute` | [docs/modules/distribute.md](docs/modules/distribute.md) |
 | Languages (catalogs, negotiation, hreflang) | `tsp-i18n` | [docs/modules/i18n.md](docs/modules/i18n.md) |
 | Vector and hybrid search, document ingestion | `tsp-vector` | [docs/modules/vector.md](docs/modules/vector.md) |
 | Web app (React) and landing site (Astro) | `js/packages/web-app`, `js/packages/landing` | [js/README.md](js/README.md) |
