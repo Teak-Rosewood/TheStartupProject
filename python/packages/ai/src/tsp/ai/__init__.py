@@ -2,6 +2,7 @@
 
 __version__ = "0.1.0"
 
+from .batches import BATCH_DISCOUNT, BatchRequest, BatchResult, BatchStatus
 from .catalog import ModelCatalog, Status
 from .client import LLMClient, SyncLLMClient
 from .models import (
@@ -9,7 +10,9 @@ from .models import (
     ChatCompletionResponse,
     ChatMessage,
     Choice,
+    Citation,
     DeltaMessage,
+    Doc,
     EmbeddingDimensionError,
     EmbeddingItem,
     EmbeddingResponse,
@@ -19,6 +22,8 @@ from .models import (
 from .providers.base import BaseProvider, ProviderHttpError
 from .providers.openai_compat import OpenAICompatProvider
 from .router import LLMRouter, ModelCandidate, RouteResult, pick_model
+from .structured import StructuredOutputError, structured
+from .translate import Translation, translate
 
 __all__ = [
     "__version__",
@@ -30,6 +35,16 @@ __all__ = [
     "ChatCompletionResponse",
     "ChatCompletionChunk",
     "Choice",
+    "Citation",
+    "Doc",
+    "BATCH_DISCOUNT",
+    "BatchRequest",
+    "BatchResult",
+    "BatchStatus",
+    "StructuredOutputError",
+    "Translation",
+    "structured",
+    "translate",
     "DeltaMessage",
     "EmbeddingDimensionError",
     "EmbeddingItem",

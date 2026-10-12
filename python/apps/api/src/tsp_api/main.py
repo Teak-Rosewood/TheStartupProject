@@ -58,6 +58,7 @@ from tsp.vector import register_with_compliance as vector_compliance
 
 from .ai import AiGateway, catalog_lifespan, register_catalog_jobs
 from .ai import build_router as build_ai_router
+from .ai_batches import register_batch_jobs
 from .billing import build_payments, plans_path, sync_plans_on_start
 from .growth import build_leads, optional_sub, set_first_touch
 from .notifications import Hooks, build_notifier, build_registry
@@ -239,6 +240,7 @@ def build_app() -> FastAPI:
         register_catalog_jobs(
             registry, llm, free_only=os.environ.get("AI_VERIFY_FREE_ONLY", "1") == "1"
         )
+        register_batch_jobs(registry, llm)
     flags = Flags()
     uploads = build_uploads(settings)
     uploads.register_with_compliance(compliance)
