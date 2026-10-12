@@ -15,7 +15,7 @@ BASE_URL = os.environ.get(
 # A database of its own: other suites drop shared tables while they run.
 URL = BASE_URL.rsplit("/", 1)[0] + "/tsp_pipeline_test"
 TABLES = (
-    "pl_events, pl_steps, pl_prompt_active, pl_prompts, pl_runs, jobs, cron_jobs, flags, "
+    "pl_eval_runs, pl_events, pl_steps, pl_prompt_active, pl_prompts, pl_runs, jobs, cron_jobs, flags, "
     "audit_log, alembic_version"
 )
 PRICES = {"m-cheap": Price(10.0, 10.0), "m-big": Price(1000.0, 1000.0)}  # $ per million tokens
