@@ -17,6 +17,7 @@ Status as of the last update to this file. "Planned" items are scheduled in the 
 | Landing page, SEO, waitlist, events, attribution, referrals, metrics | built and verified; needs your copy, a real OG image and Lighthouse in CI | `js/packages/landing`, `tsp.growth`, [docs](../modules/growth.md) |
 | Feature flags, file uploads, AI usage metering, web and mobile starters | planned, phase 7 | `tsp.flags`, `tsp.storage`, `js/` |
 | Embeddings, vector search, RAG | planned, phase 8 | [roadmap](../roadmap.md#phase-8-vector-search), [docs/aws/17](../aws/17-vector-search.md) |
+| Web crawling into vector search, live web tools | planned, phase 8b | [roadmap](../roadmap.md#phase-8b-web-ingestion), [docs/aws/18](../aws/18-web-ingestion.md) |
 
 ## Known gaps in the repo today
 - The first live deployment has not happened; runbooks and costs are unverified against a real account.

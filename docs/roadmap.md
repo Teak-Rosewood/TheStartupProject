@@ -13,6 +13,7 @@ Phases 1–7 are reconstructed from the phase references across the docs and are
 | 6 | Landing page, SEO, waitlist, events, referrals, metrics | done |
 | 7 | Feature flags, uploads, AI usage metering and gateway, web and mobile starters | in progress |
 | **8** | **Vector search and RAG** | planned (below) |
+| **8b** | **Web ingestion: scraping into vector search, live web tools** | planned (below) |
 | 9 | Launch hardening: fix the review's blockers, first live deploy, dev environment | planned |
 | 10 | Observability and quality: tracing, error tracking, LLM evals, e2e and load tests | planned |
 | 11 | Platform for customers: public API docs and SDK, outbound webhooks, search, status page | planned |
@@ -75,6 +76,60 @@ Prerequisite: phase 7 done (uploads in `tsp.storage`, credits in `tsp.metering`,
 - `docs/modules/vector.md`, CHANGELOG, [gaps](startup/gaps.md) update, and a runbook entry: rebuild an index, re-embed an organization, move a collection from pgvector to S3 Vectors.
 
 Exit criteria for phase 8: a new organization can upload a PDF, ask a question, get an answer with citations within its credit balance, and delete everything with one request; cost at idle is unchanged.
+
+## Phase 8b: Web ingestion
+
+Goal: an organization can add a website (seed URL or sitemap); the kit crawls it politely, keeps it fresh, and makes it searchable and citable through phase 8, safely, within plan limits, and at about $0 extra for small crawls. Tool choice, runtime and costs: [docs/aws/18-web-ingestion.md](aws/18-web-ingestion.md).
+
+Prerequisite: phase 8.1–8.4 (embeddings, pgvector, `tsp.vector`, ingestion jobs).
+
+### 8b.1 Tool spike
+- Run Crawl4AI, Trafilatura-over-HTTP and Scrapy against 5 representative sites (static docs, a JavaScript app, a blog, a PDF-heavy site, a large catalog). Compare text quality, pages per vCPU-second and memory use.
+- Decide the default chain (expected: HTTP + Trafilatura, then Crawl4AI for JavaScript pages, Docling for PDFs) and record it as an ADR.
+
+### 8b.2 New module `tsp.crawl`
+- `Fetcher` protocol with backends `HttpFetcher` (httpx + Trafilatura), `BrowserFetcher` (Crawl4AI) and an optional `ScrapyFetcher` for large crawls of one site.
+- `safe_url()` SSRF guard shared by every backend: scheme allow-list, DNS resolution with private, loopback, link-local and metadata ranges refused, checked again after each redirect; size, time and redirect caps.
+- `robots.txt` and sitemap parsing, URL normalisation and canonical URLs, include and exclude patterns, max depth.
+- Output: `Page(url, final_url, title, markdown, links, content_hash, etag, last_modified, fetched_at)`.
+- Done when: unit tests cover the SSRF cases (redirect to `169.254.169.254`, DNS rebinding, IPv6 loopback) and robots rules.
+
+### 8b.3 Crawl jobs
+- Tables `crawl_sources` (org, seed, rules, schedule, status) and `crawl_pages` (url, hash, etag, last fetched, status, error).
+- Jobs `crawl.plan` (expand a source into URLs), `crawl.fetch` (one URL), `crawl.refresh` (scheduled per source); the frontier lives in Postgres through `tsp.jobs`, idempotent per URL and source.
+- Politeness: per-domain token bucket in `tsp.cache`, back-off on 429 and 503, conditional GET on refresh.
+- Changed pages (new content hash) enqueue `vector.ingest`; removed pages delete their chunks.
+
+### 8b.4 Browser render worker
+- Container image with Chromium + Crawl4AI, run as a Fargate Spot task (Graviton) started by a job when render work is queued and stopped when idle.
+- Public subnet, no inbound rules, IAM limited to `crawl/*` in S3 and its queue; no database or secrets access.
+- Done when: a JavaScript-only test site is rendered and ingested end to end, and the task stops itself when the queue is empty.
+
+### 8b.5 API and web app
+- `POST /api/crawl/sources`, `GET` status and page list, `DELETE` a source (which deletes its pages and vectors), and a "recrawl now" action.
+- Web app page to add a site, watch progress, and see failed URLs with reasons.
+- Search results and RAG answers show the source URL and fetch date.
+
+### 8b.6 Live web tools (after the indexed crawl works)
+- Tools for `tsp.ai` tool calling: `web_search` (self-hosted SearXNG by default, a paid search API as an option) and `fetch_url` (through `tsp.crawl` with the same SSRF guard).
+- Short cache of fetched pages in S3 or Valkey; metered as `crawl.page` and `web.search`.
+- The gateway quotes tool results as data and refuses actions that come only from web content.
+
+### 8b.7 Compliance and limits
+- Plan limits in `plans.toml`: `crawl_pages_month`, `crawl_depth`, `crawl_refresh_min_hours`; kill switch flag `crawl`.
+- Updates to the acceptable use policy (customers confirm their right to crawl), sub-processors (any hosted crawl or search API), privacy policy and retention schedule (how long crawled pages are kept).
+- Deletion and export through `tsp.compliance`; audit log entries for source creation and deletion.
+
+### 8b.8 Infrastructure and operations
+- `CrawlConfig` in `EnvConfig`: `enabled`, `render: "none" | "fargate"`, `max_render_tasks`, `bucket_prefix`, `search: "none" | "searxng" | "api"`.
+- Alarms: crawl queue age, fetch error rate per domain, render task failures, monthly pages per org against plan.
+- Runbook: pause a source, block a domain globally, handle a takedown request.
+
+### 8b.9 Evaluation and docs
+- Extraction quality check: for a fixed set of pages, compare extracted Markdown against hand-made references (boilerplate removed, tables kept).
+- `docs/modules/crawl.md`, CHANGELOG, gaps update.
+
+Exit criteria for phase 8b: an organization adds its help-center URL, the site is crawled within its plan limits while respecting robots.txt, questions are answered with cited page links, a recrawl only re-embeds changed pages, deleting the source removes everything, and a submitted URL pointing at an internal address is refused.
 
 ## Phases 9–12
 

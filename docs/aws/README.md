@@ -82,6 +82,7 @@ What gets more expensive as you grow, and when: a second host plus ALB (+$20–4
 | [14 Payments setup](14-payments.md) | gateway secrets, seller details, webhook URL |
 | [15 Email setup](15-email.md) | SES domain, DNS records, production access |
 | [17 Vector search](17-vector-search.md) | pgvector first, S3 Vectors and OpenSearch later; options and cost by size |
+| [18 Web ingestion](18-web-ingestion.md) | scraping tools compared (Scrapy, Crawl4AI, Crawlee, Firecrawl), crawl-to-vector pipeline, guardrails, cost |
 
 ## Accepted stage-0 trade-offs
 
