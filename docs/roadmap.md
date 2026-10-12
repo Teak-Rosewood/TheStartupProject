@@ -134,7 +134,7 @@ Exit criteria for phase 8b: an organization adds its help-center URL, the site i
 
 ## Phases K1–K8: content and data platform
 
-Generic modules built after 8b, each with neutral example data and a page under `docs/modules/`. Order: K1 and K2 together, then K3, then K4 and K7, then K5, K6 and K8.
+Generic modules built after 8b, each with neutral example data and a page under `docs/modules/`. Paste-ready implementation briefs for K0, 8, 8b and K1–K8 are in [plans/](plans/README.md). Order: K1 and K2 together, then K3, then K4 and K7, then K5, K6 and K8.
 
 | Phase | Module | Scope |
 |---|---|---|
