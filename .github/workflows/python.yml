@@ -17,7 +17,7 @@ jobs:
     # Real services, mapped to the ports the tests default to (see docker-compose.yml).
     services:
       postgres:
-        image: postgres:16
+        image: pgvector/pgvector:pg16
         env: { POSTGRES_PASSWORD: test, POSTGRES_DB: test }
         ports: ["55432:5432"]
         options: >-

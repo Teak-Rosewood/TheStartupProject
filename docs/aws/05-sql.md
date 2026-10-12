@@ -46,3 +46,5 @@ Rule of thumb: stay on a container until you need a managed service, go to **RDS
 
 ### Runbook: RDS → Aurora
 Create an Aurora read replica of the RDS instance, wait for sync, promote it, then set `database.mode: aurora` so the API reads the new cluster's secret. Downtime is the promotion time (usually under a minute).
+
+The host image and the local/CI test database include the `pgvector` extension (used by `tsp.vector`, see [17 Vector search](17-vector-search.md)); backups cover vector columns (proved by `docker/postgres/test_backup.sh`). RDS and Aurora support it too.
