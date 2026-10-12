@@ -14,7 +14,8 @@ Phases 1–7 are reconstructed from the phase references across the docs and are
 | 7 | Feature flags, uploads, AI usage metering and gateway, web and mobile starters | in progress |
 | **8** | **Vector search and RAG** | planned (below) |
 | **8b** | **Web ingestion: scraping into vector search, live web tools** | planned (below) |
-| 9 | Launch hardening: fix the review's blockers, first live deploy, dev environment | planned |
+| K1–K8 | Content and data platform modules: source connectors, knowledge graph, AI workflows, editorial CMS, paywall, engagement, trend signals, languages and distribution | planned (after 8b; see below) |
+| 9 | Launch hardening: first live deploy, dev environment (the review's other blockers are fixed before phase 8) | planned |
 | 10 | Observability and quality: tracing, error tracking, LLM evals, e2e and load tests | planned |
 | 11 | Platform for customers: public API docs and SDK, outbound webhooks, search, status page | planned |
 | 12 | Enterprise readiness: SSO/SAML, RLS everywhere, SOC 2 / ISO evidence, DR | planned |
@@ -131,11 +132,26 @@ Prerequisite: phase 8.1–8.4 (embeddings, pgvector, `tsp.vector`, ingestion job
 
 Exit criteria for phase 8b: an organization adds its help-center URL, the site is crawled within its plan limits while respecting robots.txt, questions are answered with cited page links, a recrawl only re-embeds changed pages, deleting the source removes everything, and a submitted URL pointing at an internal address is refused.
 
+## Phases K1–K8: content and data platform
+
+Generic modules built after 8b, each with neutral example data and a page under `docs/modules/`. Paste-ready implementation briefs for K0, 8, 8b and K1–K8 are in [plans/](plans/README.md). Order: K1 and K2 together, then K3, then K4 and K7, then K5, K6 and K8.
+
+| Phase | Module | Scope |
+|---|---|---|
+| K1 | `tsp.sources` | source registry (licence, terms, schedule, health) and connectors that try open data, bulk files, scraping, free APIs and paid APIs in a configured order, with fallback and resumable cursors |
+| K2 | `tsp.graph` | entities with multilingual aliases, claims with provenance, typed links with validity dates, stances, time series; "valid at date" and short-path queries on Postgres |
+| K3 | `tsp.pipeline` + `tsp.ai` | durable multi-step AI workflows with checkpoints, budgets, traces and costs; versioned prompts; eval harness; prompt caching, batches, citations, structured outputs, glossary-aware translation |
+| K4 | `tsp.cms` | content items with versions and language variants, publish checks, scheduled publish, public corrections log, living-or-frozen review cadence, complaints desk with deadlines, restricted-mode windows |
+| K5 | `tsp.paywall` | meter policies, signed anonymous meter, shared-network-aware device signal, hard and soft walls, crawler verification, gift links, pay-per-item credits |
+| K6 | `tsp.engage` | before-and-after position polls, read receipts, streaks, points, onboarding preconditions, moderated submissions with no replies, appeals |
+| K7 | `tsp.trends` | plug-in interest signals, scoring and a daily candidate list |
+| K8 | `tsp.i18n` + `tsp.distribute` | message catalogs, language URLs, Hindi-aware search, newsletters, share cards, SEO structured data, labelled AI illustrations |
+
 ## Phases 9–12
 
 Each line links to the finding it addresses in the [project review](review-2026-10.md).
 
-- **9 Launch hardening**: deploy and security workflows on the right branch ([B1](review-2026-10.md#b1-deploy-and-security-workflows-never-run)); missing phase-7 docs ([B2](review-2026-10.md#b2-docs-the-code-points-to-do-not-exist)); stale README and gaps ([B3](review-2026-10.md#b3-status-pages-disagree-with-the-code)); first live deploy with verified costs; dev environment ([docs/aws/11](aws/11-multi-env.md)); 180-day log retention for production.
+- **9 Launch hardening**: the first live deploy with verified costs and the dev environment are the phase-9 work. The other blockers are cheap and unblock everything else, so they are done first, before phase 8: deploy and security workflows on the right branch ([B1](review-2026-10.md#b1-deploy-and-security-workflows-never-run)); missing phase-7 docs ([B2](review-2026-10.md#b2-docs-the-code-points-to-do-not-exist)); stale README and gaps ([B3](review-2026-10.md#b3-status-pages-disagree-with-the-code)); first live deploy with verified costs; dev environment ([docs/aws/11](aws/11-multi-env.md)); 180-day log retention for production.
 - **10 Observability and quality**: OpenTelemetry tracing, error tracking, LLM cost and latency dashboards per organization, end-to-end browser tests, load tests, generated TypeScript API client.
 - **11 Platform for customers**: public API reference and SDK, outbound webhooks, full-text search (shared with phase 8), status page, in-app changelog, internationalisation.
 - **12 Enterprise readiness**: SAML/OIDC SSO per organization, Postgres RLS on every tenant table, SOC 2 / ISO 27001 evidence collection, cross-region backup copies and a tested disaster-recovery runbook, e-invoicing (IRN) above the GST threshold.
