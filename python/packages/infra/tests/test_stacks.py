@@ -134,3 +134,20 @@ def test_deploy_role_is_scoped_to_environment(stage):
 def test_bad_secret_is_rejected():
     with pytest.raises(ValueError):
         EnvConfig(**{**make_config().model_dump(), "origin_verify_secret": "short"})
+
+
+def test_drill_role_trusts_the_default_branch_from_config(stage):
+    assert "repo:acme/startup:ref:refs/heads/master" in str(
+        Template.from_stack(stage.oidc).to_json()
+    )
+    custom = AppStage(
+        new_app(),
+        "t2",
+        config=EnvConfig(
+            **{
+                **make_config().model_dump(),
+                "github": GithubConfig(owner="acme", repo="startup", branch="trunk"),
+            }
+        ),
+    )
+    assert "refs/heads/trunk" in str(Template.from_stack(custom.oidc).to_json())

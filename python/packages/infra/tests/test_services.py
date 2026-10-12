@@ -675,7 +675,11 @@ def test_ai_provider_keys_are_injected_from_secrets_manager_by_name():
         if any(e["Name"] == "AI_CREDITS_PER_1K_OUT" for e in c.get("Environment", []))
     )
     env = {e["Name"]: e.get("Value") for e in api["Environment"]}
-    assert env["AI_CREDITS_PER_1K_OUT"] == "5.0" and env["AI_VERIFY_FREE_ONLY"] == "1"
+    assert (
+        env["AI_DEFAULT_RPM"] == "20"
+        and env["AI_CREDITS_PER_1K_OUT"] == "5.0"
+        and env["AI_VERIFY_FREE_ONLY"] == "1"
+    )
     assert {"GROQ_KEY", "OPENROUTER_KEY"} <= {s["Name"] for s in api["Secrets"]}
     assert "GROQ_KEY" not in env
 

@@ -12,7 +12,7 @@ A small team's minimum before real users arrive. Tick them off; most take an aft
 - [ ] Offboarding checklist: revoke GitHub, AWS, email, gateway, registrar access the same day.
 
 ## Code and supply chain
-- [ ] Branch protection on `main`, required reviews, required CI checks.
+- [ ] Branch protection on `master`, required reviews, required CI checks.
 - [ ] Secret scanning and dependency audit run in CI (`.github/workflows/security.yml`); Dependabot enabled.
 - [ ] No secrets in the repo or in container images. Secrets live in AWS Secrets Manager.
 - [ ] Pin and review GitHub Actions; prefer official or well-known actions.

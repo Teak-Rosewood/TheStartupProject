@@ -227,7 +227,14 @@ def build_app() -> FastAPI:
     )
     app.include_router(metering_router(api.org_member, db_session), prefix=settings.api_prefix)
     if llm is not None:
-        gateway = AiGateway(llm, accounts, flags, payments, rates=build_rates())
+        gateway = AiGateway(
+            llm,
+            accounts,
+            flags,
+            payments,
+            rates=build_rates(),
+            default_rpm=int(os.environ.get("AI_DEFAULT_RPM", "20")),
+        )
         app.state.ai_gateway = gateway
         app.include_router(build_ai_router(gateway), prefix=settings.api_prefix)
     app.state.flags = flags

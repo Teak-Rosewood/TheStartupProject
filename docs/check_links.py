@@ -14,6 +14,14 @@ for md in list(root.glob("*.md")) + list((root / "docs").rglob("*.md")):
         path = target.split("#")[0]
         if path and not (md.parent / path).exists():
             bad.append(f"{md.relative_to(root)}: {target}")
+# Package READMEs and Python sources name docs pages as `docs/...md` (from the repo root).
+ref = re.compile(r"(?<![\w/.-])((?:\.\./)*docs/[\w./-]+\.md)")
+for src in list((root / "python").rglob("*.py")) + list((root / "python/packages").glob("*/README.md")):
+    if ".venv" in src.parts or "node_modules" in src.parts:
+        continue
+    for target in ref.findall(src.read_text()):
+        if not (root / target.removeprefix("../" * target.count("../"))).exists():
+            bad.append(f"{src.relative_to(root)}: {target}")
 for line in bad:
     print("BROKEN", line)
 if bad:

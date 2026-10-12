@@ -60,6 +60,7 @@ class AiGateway(Construct):
             "AI_VERIFY_FREE_ONLY": "1" if a.verify_free_only else "0",
             "AI_CREDITS_PER_1K_IN": str(a.credits_per_1k_in),
             "AI_CREDITS_PER_1K_OUT": str(a.credits_per_1k_out),
+            "AI_DEFAULT_RPM": str(a.default_rpm),
         }
         self.secrets: dict[str, ecs.Secret] = {}
         if a.provider_keys:

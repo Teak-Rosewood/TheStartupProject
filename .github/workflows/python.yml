@@ -47,6 +47,7 @@ jobs:
       - uses: actions/checkout@v4
       - run: python3 docs/legal/check_placeholders.py
       - run: python3 docs/check_links.py
+      - run: python3 docs/check_modules.py
 
   postgres-backup:
     # Proves backup + point-in-time restore against an S3 mock, using the exact production image.
