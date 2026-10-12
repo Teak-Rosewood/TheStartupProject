@@ -16,6 +16,7 @@ A cloneable kit of building blocks for starting a company's software: pick the m
 | Vector and hybrid search, document ingestion | `tsp-vector` | [docs/modules/vector.md](docs/modules/vector.md) |
 | Paywalls (metered, hard, gift links, pay-per-item) | `tsp-paywall` | [docs/modules/paywall.md](docs/modules/paywall.md) |
 | Knowledge graph: entities and aliases, claims with provenance, validity-dated links, stances, time series | tsp-graph | [docs/modules/graph.md](docs/modules/graph.md) |
+| Durable AI workflows: checkpoints, retries, budgets, traces, human steps, versioned prompts | tsp-pipeline | [docs/modules/pipeline.md](docs/modules/pipeline.md) |
 | Web app (React) and landing site (Astro) | `js/packages/web-app`, `js/packages/landing` | [js/README.md](js/README.md) |
 | Mobile starter (Expo, source only) | `js/packages/mobile` | [js/README.md](js/README.md) |
 
