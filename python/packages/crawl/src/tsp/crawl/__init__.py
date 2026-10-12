@@ -27,6 +27,7 @@ from .jobs import register_jobs
 from .models import CrawlPage, CrawlSource
 from .page import Fetcher, NotModified, Page
 from .politeness import DomainLimiter
+from .render_api import RenderResult, build_render_router
 from .robots import RobotsCache
 from .safe_url import ResolvedURL, safe_url
 from .service import CrawlService, in_scope
@@ -38,6 +39,8 @@ __all__ = [
     "CrawlService",
     "CrawlSettings",
     "CrawlSource",
+    "RenderResult",
+    "build_render_router",
     "build_router",
     "in_scope",
     "migrations_path",

@@ -52,6 +52,22 @@ async def test_enqueue_and_run(db):
     assert await w.run_once() == 0
 
 
+async def test_workers_claim_only_their_queues(db):
+    reg, default, calls = make(db)
+    other = Worker(reg, db, poll_interval=0.05, queues=["render"])
+    both = Worker(reg, db, poll_interval=0.05, queues=["default", "render"])
+    async with db.session() as s:
+        await enqueue(s, "ok", {"n": "plain"})
+        await enqueue(s, "ok", {"n": "render"}, queue="render")
+    assert await default.run_once() == 1 and calls[-1][1] == {"n": "plain"}
+    assert await default.run_once() == 0  # the render job is not theirs
+    assert await other.run_once() == 1 and calls[-1][1] == {"n": "render"}
+    async with db.session() as s:
+        await enqueue(s, "ok", {"n": "a"})
+        await enqueue(s, "ok", {"n": "b"}, queue="render")
+    assert await both.run_once() == 2
+
+
 async def test_enqueue_is_transactional(db):
     with pytest.raises(RuntimeError):
         async with db.session() as s:

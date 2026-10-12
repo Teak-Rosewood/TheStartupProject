@@ -6,7 +6,7 @@ import logging
 import os
 import random
 import socket
-from collections.abc import AsyncIterator, Callable
+from collections.abc import AsyncIterator, Callable, Sequence
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
 from typing import Any
@@ -27,6 +27,53 @@ def backoff(attempt: int) -> timedelta:
     return timedelta(seconds=min(3600, 10 * 2 ** (attempt - 1)) * random.uniform(0.8, 1.2))
 
 
+async def claim_jobs(
+    db: Database, queues: Sequence[str], worker_id: str, lease: timedelta, limit: int
+) -> list[dict[str, Any]]:
+    """Lease up to ``limit`` due jobs from ``queues`` (``FOR UPDATE SKIP LOCKED``). A job whose
+    lease ran out is claimed again. Callers must end each job with ``finish_job`` or ``fail_job``."""
+    async with db.session() as s:
+        rows = await s.execute(
+            text(
+                "UPDATE jobs SET status = 'running', locked_at = now(), locked_by = :w, attempts = attempts + 1 "
+                "WHERE id IN (SELECT id FROM jobs WHERE queue = ANY(:queues) AND ((status = 'queued' AND run_at <= now()) "
+                "OR (status = 'running' AND locked_at < now() - make_interval(secs => :lease))) "
+                "ORDER BY run_at FOR UPDATE SKIP LOCKED LIMIT :n) "
+                "RETURNING id, name, payload, attempts, max_attempts"
+            ),
+            {"w": worker_id, "lease": lease.total_seconds(), "n": limit, "queues": list(queues)},
+        )
+        return [dict(r._mapping) for r in rows]
+
+
+async def finish_job(db: Database, job_id: int) -> None:
+    async with db.session() as s:
+        await s.execute(
+            text(
+                "UPDATE jobs SET status = 'done', finished_at = now(), locked_at = NULL, locked_by = NULL, last_error = NULL WHERE id = :id"
+            ),
+            {"id": job_id},
+        )
+
+
+async def fail_job(db: Database, job: dict[str, Any], error: str, *, dead: bool = False) -> None:
+    """Retry later with backoff, or mark dead once ``max_attempts`` is used up (or ``dead``)."""
+    dead = dead or job["attempts"] >= job["max_attempts"]
+    async with db.session() as s:
+        await s.execute(
+            text(
+                "UPDATE jobs SET status = :st, last_error = :err, run_at = :at, locked_at = NULL, locked_by = NULL, "
+                "finished_at = CASE WHEN :st = 'dead' THEN now() ELSE NULL END WHERE id = :id"
+            ),
+            {
+                "st": "dead" if dead else "queued",
+                "err": error[:1000],
+                "at": datetime.now(timezone.utc) + backoff(job["attempts"]),
+                "id": job["id"],
+            },
+        )
+
+
 class Worker:
     """Claims due jobs with ``FOR UPDATE SKIP LOCKED``, so any number of workers can run side by side.
 
@@ -43,12 +90,14 @@ class Worker:
         poll_interval: float = 2.0,
         lease: timedelta = timedelta(minutes=10),
         worker_id: str | None = None,
+        queues: Sequence[str] = ("default",),
     ):
         self.registry = registry
         self.db = database
         self.concurrency = concurrency
         self.poll = poll_interval
         self.lease = lease
+        self.queues = list(queues)
         self.id = worker_id or f"{socket.gethostname()}:{os.getpid()}"
         self._sessions = async_sessionmaker(database.engine, expire_on_commit=False)
 
@@ -103,18 +152,7 @@ class Worker:
         return n
 
     async def _claim(self, limit: int) -> list[dict[str, Any]]:
-        async with self.db.session() as s:
-            rows = await s.execute(
-                text(
-                    "UPDATE jobs SET status = 'running', locked_at = now(), locked_by = :w, attempts = attempts + 1 "
-                    "WHERE id IN (SELECT id FROM jobs WHERE (status = 'queued' AND run_at <= now()) "
-                    "OR (status = 'running' AND locked_at < now() - make_interval(secs => :lease)) "
-                    "ORDER BY run_at FOR UPDATE SKIP LOCKED LIMIT :n) "
-                    "RETURNING id, name, payload, attempts, max_attempts"
-                ),
-                {"w": self.id, "lease": self.lease.total_seconds(), "n": limit},
-            )
-            return [dict(r._mapping) for r in rows]
+        return await claim_jobs(self.db, self.queues, self.id, self.lease, limit)
 
     async def _run(self, job: dict[str, Any]) -> None:
         handler = self.registry.handlers.get(job["name"])
@@ -127,31 +165,12 @@ class Worker:
                     JobContext(s, job["id"], job["attempts"], job["name"]), job["payload"]
                 )
         except Exception as e:
-            dead = job["attempts"] >= job["max_attempts"] or handler is None
             log.warning(
                 "job %s (%s) failed on attempt %s: %s", job["id"], job["name"], job["attempts"], e
             )
-            async with self.db.session() as s:
-                await s.execute(
-                    text(
-                        "UPDATE jobs SET status = :st, last_error = :err, run_at = :at, locked_at = NULL, locked_by = NULL, "
-                        "finished_at = CASE WHEN :st = 'dead' THEN now() ELSE NULL END WHERE id = :id"
-                    ),
-                    {
-                        "st": "dead" if dead else "queued",
-                        "err": f"{type(e).__name__}: {e}"[:1000],
-                        "at": datetime.now(timezone.utc) + backoff(job["attempts"]),
-                        "id": job["id"],
-                    },
-                )
+            await fail_job(self.db, job, f"{type(e).__name__}: {e}", dead=handler is None)
             return
-        async with self.db.session() as s:
-            await s.execute(
-                text(
-                    "UPDATE jobs SET status = 'done', finished_at = now(), locked_at = NULL, locked_by = NULL, last_error = NULL WHERE id = :id"
-                ),
-                {"id": job["id"]},
-            )
+        await finish_job(self.db, job["id"])
 
     async def run_once(self, limit: int | None = None) -> int:
         """Claim and run up to ``limit`` due jobs (concurrently). Returns how many were attempted."""

@@ -31,6 +31,17 @@ from tsp.compliance import (
     build_router,
     make_guards,
 )
+from tsp.crawl import (
+    ChainFetcher,
+    CrawlService,
+    CrawlSettings,
+    HttpFetcher,
+    RobotsCache,
+    build_render_router,
+)
+from tsp.crawl import build_router as crawl_router
+from tsp.crawl import register_jobs as crawl_jobs
+from tsp.crawl import register_with_compliance as crawl_compliance
 from tsp.flags import Flags
 from tsp.flags import build_router as flags_router
 from tsp.growth import api as growth_api
@@ -67,6 +78,7 @@ from tsp.vector import register_with_compliance as vector_compliance
 
 from .ai import AiGateway, catalog_lifespan, register_catalog_jobs
 from .ai import build_router as build_ai_router
+from .ai_batches import register_batch_jobs
 from .billing import build_payments, plans_path, sync_plans_on_start
 from .cms import Cms, cms_settings, principal_dependency
 from .growth import build_leads, optional_sub, set_first_touch
@@ -202,6 +214,57 @@ def vector_lifespan(service: VectorService) -> Any:
     return run
 
 
+def build_crawl(vector: VectorService, payments: Any | None) -> CrawlService:
+    """Website ingestion into ``vector``. Pages that need a browser go to the render worker only when
+    ``CRAWL_RENDER=fargate`` (see docs/modules/crawl.md); otherwise ``render: always`` sources fail
+    their pages with a clear message."""
+    ua = os.environ.get("CRAWL_USER_AGENT") or CrawlSettings().user_agent
+    http = HttpFetcher(user_agent=ua)
+    cache = NullCache()  # replaced by the app's cache in crawl_lifespan
+
+    async def limits(session: Any, org_id: str) -> dict[str, int | None]:
+        feats = (await payments.entitlements(session, org_id)).features if payments else {}
+        return {
+            k: feats.get(k) for k in ("crawl_pages_month", "crawl_depth", "crawl_refresh_min_hours")
+        }
+
+    return CrawlService(
+        vector,
+        ChainFetcher(http),
+        http,
+        _robots(http, cache),
+        cache,
+        settings=CrawlSettings(user_agent=ua),
+        limits=limits,
+        render_remote=os.environ.get("CRAWL_RENDER") == "fargate",
+    )
+
+
+def _robots(http: HttpFetcher, cache: Any) -> RobotsCache:
+    async def fetch_text(url: str) -> tuple[int, str]:
+        raw = await http.fetch_raw(url)
+        return raw.status, raw.body.decode("utf-8", errors="replace")
+
+    return RobotsCache(cache, fetch_text)
+
+
+def crawl_lifespan(service: CrawlService) -> Any:
+    """Give the service the app's database and cache once the app has created them."""
+
+    @asynccontextmanager
+    async def run(app: Any) -> AsyncIterator[None]:
+        if getattr(app.state, "db", None) is not None:
+            service.bind(app.state.db)
+        service.cache = app.state.cache
+        service.robots = _robots(service.http, app.state.cache)
+        try:
+            yield
+        finally:
+            await service.http.aclose()
+
+    return run
+
+
 def paywall_lifespan(pw: Paywall) -> Any:
     """Use the app's cache for the shared-network detection once the app has created it."""
 
@@ -249,6 +312,7 @@ def build_app() -> FastAPI:
         register_catalog_jobs(
             registry, llm, free_only=os.environ.get("AI_VERIFY_FREE_ONLY", "1") == "1"
         )
+        register_batch_jobs(registry, llm)
     flags = Flags()
     cms = Cms(cms_settings(), notifier)
     cms_jobs(
@@ -265,12 +329,18 @@ def build_app() -> FastAPI:
     if vector is not None:
         vector_jobs(registry, vector)
         vector_compliance(compliance, vector)
+    crawl = build_crawl(vector, payments) if vector is not None else None
+    if crawl is not None:
+        crawl_jobs(registry, crawl)
+        crawl_compliance(compliance, crawl)
     # Stage 0 runs jobs inside the API process (no memory for a second container); set
     # TSP_JOBS_INLINE=0 when you run `tsp-jobs worker` separately.
     inline = os.environ.get("TSP_JOBS_INLINE", "1") == "1"
     background: list[Any] = [worker_lifespan(registry)] if inline else []
     if vector is not None:
         background.insert(0, vector_lifespan(vector))  # before the worker starts taking jobs
+    if crawl is not None:
+        background.insert(0, crawl_lifespan(crawl))
     if llm is not None:
         background.insert(0, llm_lifespan(llm))
         background.append(catalog_lifespan(llm))
@@ -393,6 +463,21 @@ def build_app() -> FastAPI:
             vector_router(vector, api.account, api.org_member, db_session, killed=vector_killed),
             prefix=settings.api_prefix,
         )
+    if crawl is not None:
+
+        async def crawl_killed(s: Any) -> bool:
+            return await flags.killed(s, "crawl")
+
+        app.state.crawl = crawl
+        app.include_router(
+            crawl_router(crawl, api.account, api.org_member, db_session, killed=crawl_killed),
+            prefix=settings.api_prefix,
+        )
+        render_token = os.environ.get("CRAWL_RENDER_TOKEN")
+        if render_token and crawl.render_remote:
+            # Under the API prefix, because that is all the edge forwards and the render worker runs
+            # outside the VPC. The bearer token is the only credential and opens only these routes.
+            app.include_router(build_render_router(crawl, render_token), prefix=settings.api_prefix)
     if paywall is not None:
         app.state.paywall = paywall
         app.include_router(

@@ -7,7 +7,9 @@ from typing import Any
 
 from sqlalchemy import (
     BigInteger,
+    Boolean,
     DateTime,
+    Float,
     ForeignKey,
     Index,
     Integer,
@@ -113,3 +115,25 @@ class Event(Base):
     data: Mapped[dict[str, Any]] = mapped_column(JSONB, server_default="{}")
 
     __table_args__ = (Index("ix_pl_events_run", "run_id", "id"),)
+
+
+class EvalRun(Base):
+    """One evaluation of one prompt version on one suite."""
+
+    __tablename__ = "pl_eval_runs"
+
+    id: Mapped[uuid.UUID] = _pk()
+    suite: Mapped[str] = mapped_column(Text)
+    prompt_key: Mapped[str] = mapped_column(Text)
+    prompt_version: Mapped[int] = mapped_column(Integer)
+    model: Mapped[str | None] = mapped_column(Text)
+    scorer: Mapped[str] = mapped_column(Text)  # exact | python | judge
+    score: Mapped[float] = mapped_column(Float)  # mean over cases, 0..1
+    n_cases: Mapped[int] = mapped_column(Integer)
+    n_errors: Mapped[int] = mapped_column(Integer, server_default="0")
+    results: Mapped[list[Any]] = mapped_column(JSONB)  # per case: id, score, output, error, reason
+    baseline_version: Mapped[int | None] = mapped_column(Integer)
+    baseline_score: Mapped[float | None] = mapped_column(Float)
+    passed: Mapped[bool] = mapped_column(Boolean)
+    reasons: Mapped[list[Any]] = mapped_column(JSONB, server_default="[]")  # why it failed
+    created_at: Mapped[datetime] = mapped_column(_TS, server_default=func.now())

@@ -3,26 +3,28 @@ from __future__ import annotations
 import fnmatch
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 from urllib.parse import urlsplit
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from tsp.audit import Actor, record
 from tsp.cache import Cache
 from tsp.db import Database
-from tsp.jobs import enqueue
+from tsp.jobs import claim_jobs, enqueue, fail_job, finish_job
 from tsp.metering import UsageRecord, record_usage
 from tsp.vector import BadRequest, LimitExceeded, NotFound, VectorService
 
+from .chain import needs_render
 from .config import MAX_PAGES_HARD_CAP, MAX_PATTERNS, CrawlSettings
 from .errors import CrawlError, FetchError, RateLimited, UnsafeURL
 from .fetch_http import HttpFetcher
 from .models import CrawlPage, CrawlSource
-from .page import Fetcher, NotModified
+from .page import Fetcher, NotModified, Page, content_hash
 from .politeness import DomainLimiter
+from .render_api import RenderResult
 from .robots import RobotsCache
 from .sitemap import parse_sitemap
 from .urls import normalise
@@ -35,6 +37,7 @@ PLAN_JOB, FETCH_JOB, REFRESH_JOB, PURGE_JOB = (
 )
 SYSTEM = Actor(None, "system")
 PURGE_BATCH = 100
+RENDER_JOB = RENDER_QUEUE = "crawl.render"  # job name and queue: only the render worker takes them
 Limits = Callable[[AsyncSession, str], Awaitable[dict[str, Any]]]
 
 
@@ -88,10 +91,12 @@ class _Job:
 class CrawlService:
     """Sources, pages and the plan, fetch and purge steps that jobs call.
 
-    ``fetcher`` serves ``render`` of ``never`` and ``auto`` (give it a browser through
-    ``ChainFetcher`` to let ``auto`` render); ``render_fetcher`` serves ``always``. Without one a
-    source asking for ``always`` fails each page with a clear error instead of fetching it
-    unrendered."""
+    ``fetcher`` does the plain HTTP fetch for every source. A source with ``render`` of ``always``
+    (or ``auto`` when the plain result is thin or JavaScript-only) is rendered in a browser:
+    with ``render_remote`` the page is queued on ``crawl.render`` for the render worker, which
+    reports back through the internal render API; otherwise ``render_fetcher``, if given, renders
+    in this process. With neither, an ``always`` page fails with a clear error instead of being
+    fetched unrendered."""
 
     vector: VectorService
     fetcher: Fetcher
@@ -102,6 +107,9 @@ class CrawlService:
     settings: CrawlSettings = field(default_factory=CrawlSettings)
     limits: Limits | None = None
     render_fetcher: Fetcher | None = None
+    render_remote: bool = (
+        False  # pages needing a browser go to the render queue for the render worker
+    )
 
     def bind(self, db: Database) -> None:
         self.db = db
@@ -358,18 +366,19 @@ class CrawlService:
                 .all()
             )
             for pid in ids:
-                await self._enqueue_fetch(s, src.id, pid, now)
+                await self._enqueue_fetch(s, src.id, pid, now, render=src.render == "always")
             return len(ids)
 
     async def _enqueue_fetch(
-        self, s: AsyncSession, source_id: str, page_id: str, now: datetime
+        self, s: AsyncSession, source_id: str, page_id: str, now: datetime, *, render: bool = False
     ) -> None:
-        await enqueue(
-            s,
-            FETCH_JOB,
-            {"page_id": page_id},
-            unique_key=f"crawl:{source_id}:{_slot(now, 60)}:{page_id}",
-        )
+        key = f"crawl:{source_id}:{_slot(now, 60)}:{page_id}"
+        if render and self.render_remote:
+            await enqueue(
+                s, RENDER_JOB, {"page_id": page_id}, unique_key=key + ":r", queue=RENDER_QUEUE
+            )
+        else:
+            await enqueue(s, FETCH_JOB, {"page_id": page_id}, unique_key=key)
 
     async def _pages_this_month(self, s: AsyncSession, org_id: str) -> int:
         month = datetime.now(timezone.utc).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
@@ -387,8 +396,9 @@ class CrawlService:
             ).scalar_one()
         )
 
-    async def fetch_page(self, page_id: str) -> None:
-        """Fetch one page and apply the result. Raises for transient failures so the job retries."""
+    async def prepare(self, page_id: str) -> _Job | None:
+        """Load what a fetch needs. ``None`` when there is nothing to do: the page or source is gone
+        or paused, or the organization has used its monthly pages (the page is marked then)."""
         async with self._session() as s:
             row = (
                 await s.execute(
@@ -398,19 +408,25 @@ class CrawlService:
                 )
             ).first()
             if row is None or row[1].status != "active":
-                return
+                return None
             page, src = row
             caps = await self.limits(s, src.org_id) if self.limits else {}
             cap = caps.get("crawl_pages_month")  # soft under concurrency: see docs
             if cap is not None and await self._pages_this_month(s, src.org_id) >= cap:
                 page.status, page.error = "error", "monthly page limit reached"
-                return
-            job = _Job(
+                return None
+            return _Job(
                 page.id, src.org_id, src.id, src.seed_url, list(src.include), list(src.exclude),
                 src.max_depth, src.max_pages, src.render, src.created_by, src.collection_id,
                 page.url, page.depth, page.etag, page.last_modified, page.content_hash,
                 page.vector_document_id,
             )  # fmt: skip
+
+    async def fetch_page(self, page_id: str) -> None:
+        """Fetch one page and apply the result. Raises for transient failures so the job retries."""
+        job = await self.prepare(page_id)
+        if job is None:
+            return
         outcome = await self._fetch(job)
         async with self._session() as s:
             transient = await self._apply(s, job, outcome)
@@ -421,6 +437,8 @@ class CrawlService:
         host, ua = urlsplit(job.url).netloc, self.settings.user_agent
         fetcher = self.fetcher
         if job.render == "always":
+            if self.render_remote:
+                return "defer", None  # belongs on the render queue (it was queued here by mistake)
             if self.render_fetcher is None:
                 return "error", ("rendering is not configured", None, False)
             fetcher = self.render_fetcher
@@ -448,7 +466,11 @@ class CrawlService:
         except CrawlError as e:
             return "error", (str(e), None, False)
         await limiter.report(host, 200 if isinstance(result, NotModified) else result.status)
-        return ("not_modified", result) if isinstance(result, NotModified) else ("page", result)
+        if isinstance(result, NotModified):
+            return "not_modified", result
+        if job.render == "auto" and self.render_remote and needs_render(result):
+            return "defer", None  # thin or JavaScript-only: a browser should read it
+        return "page", result
 
     async def _apply(self, s: AsyncSession, job: _Job, outcome: tuple[str, Any]) -> str | None:
         """Write the fetch result. Returns an error message when the job should be retried."""
@@ -457,6 +479,15 @@ class CrawlService:
             return None  # the source was purged while we were fetching
         kind, data = outcome
         now = datetime.now(timezone.utc)
+        if kind == "defer":
+            await enqueue(
+                s,
+                RENDER_JOB,
+                {"page_id": page.id},
+                unique_key=f"crawl:{job.source_id}:{_slot(now, 60)}:{page.id}:r",
+                queue=RENDER_QUEUE,
+            )
+            return None
         page.fetched_at = now
         if kind == "robots":
             page.status, page.error = "skipped_robots", None
@@ -547,7 +578,7 @@ class CrawlService:
             )
         ).scalars()
         for pid in added:
-            await self._enqueue_fetch(s, job.source_id, pid, now)
+            await self._enqueue_fetch(s, job.source_id, pid, now, render=job.render == "always")
 
     async def _drop_document(self, s: AsyncSession, org_id: str, page_id: str, doc_id: str) -> None:
         """Delete a vector document unless another page of ours still points at it."""
@@ -568,6 +599,93 @@ class CrawlService:
         if page.vector_document_id:
             await self._drop_document(s, page.org_id, page.id, page.vector_document_id)
         page.vector_document_id = page.content_hash = None
+
+    # -- the render worker's side ----------------------------------------------------------
+
+    async def claim_render(
+        self, worker_id: str, lease: timedelta = timedelta(minutes=10)
+    ) -> dict[str, Any] | None:
+        """Hand the render worker its next page, or ``None`` when the queue is empty. robots.txt and
+        the per-host limiter are applied here, so the browser never sees a page we may not fetch."""
+        db = self._need_db()
+        for _ in range(25):  # skip jobs with nothing to do instead of answering "empty" for each
+            claimed = await claim_jobs(db, [RENDER_QUEUE], worker_id, lease, 1)
+            if not claimed:
+                return None
+            job = claimed[0]
+            prepared = await self.prepare(job["payload"]["page_id"])
+            if prepared is None:
+                await finish_job(db, job["id"])
+                continue
+            ua = self.settings.user_agent
+            host = urlsplit(prepared.url).netloc
+            try:
+                if not await self.robots.allowed(prepared.url, ua):
+                    async with self._session() as s:
+                        await self._apply(s, prepared, ("robots", None))
+                    await finish_job(db, job["id"])
+                    continue
+                await DomainLimiter(self.cache, self.settings.rps).acquire(
+                    host,
+                    delay=await self.robots.crawl_delay(prepared.url, ua),
+                    max_wait=self.settings.max_wait_seconds,
+                )
+            except RateLimited as e:
+                await fail_job(db, job, str(e))
+                continue
+            return {"job_id": job["id"], "url": prepared.url, "user_agent": ua}
+        return None
+
+    async def submit_render(self, job_id: int, result: RenderResult) -> None:
+        """Apply what the render worker found. The job must be a running ``crawl.render`` job."""
+        db = self._need_db()
+        async with self._session() as s:
+            row = (
+                await s.execute(
+                    text(
+                        "SELECT id, payload, attempts, max_attempts FROM jobs "
+                        "WHERE id = :id AND queue = :q AND status = 'running'"
+                    ),
+                    {"id": job_id, "q": RENDER_QUEUE},
+                )
+            ).first()
+        if row is None:
+            raise NotFound("no such render job")
+        job = dict(row._mapping)
+        prepared = await self.prepare(job["payload"]["page_id"])
+        if prepared is None:
+            await finish_job(db, job_id)
+            return
+        outcome: tuple[str, Any]
+        if result.error is not None:
+            outcome = ("error", (result.error, result.status, result.transient))
+        else:
+            try:
+                await self.http.check_url(result.final_url)  # the browser may have been redirected
+            except UnsafeURL as e:
+                outcome = ("error", (f"blocked: {e}", None, False))
+            else:
+                outcome = (
+                    "page",
+                    Page(
+                        url=prepared.url, final_url=result.final_url, status=result.status or 200,
+                        title=result.title, markdown=result.markdown, links=result.links,
+                        content_hash=content_hash(result.markdown), etag=None, last_modified=None,
+                        fetched_at=datetime.now(timezone.utc), content_type="text/html",
+                        fetcher="browser",
+                    ),
+                )  # fmt: skip
+        async with self._session() as s:
+            transient = await self._apply(s, prepared, outcome)
+        if transient:
+            await fail_job(db, job, transient)
+        else:
+            await finish_job(db, job_id)
+
+    def _need_db(self) -> Database:
+        if self.db is None:
+            raise RuntimeError("CrawlService has no database; pass db= or call bind(db)")
+        return self.db
 
     async def purge(self, source_id: str) -> None:
         """Delete a source's documents in batches, then the source and its pages."""

@@ -25,9 +25,29 @@ class ChatMessage(BaseModel):
 
 
 class Usage(BaseModel):
+    """``prompt_tokens`` counts every input token, cached or not (the OpenAI convention); the two
+    cache fields say how many of them were written to or read from the provider's prompt cache."""
+
     prompt_tokens: int = 0
     completion_tokens: int = 0
     total_tokens: int = 0
+    cache_read_tokens: int = 0
+    cache_write_tokens: int = 0
+
+
+class Doc(BaseModel):
+    """A source document the model may quote; with ``citations=True`` answers point back to it."""
+
+    id: str
+    text: str
+    title: str | None = None
+
+
+class Citation(BaseModel):
+    doc_id: str
+    start: int  # character offsets into the document text
+    end: int
+    quoted_text: str
 
 
 class ChoiceMessage(BaseModel):
@@ -62,6 +82,7 @@ class ChatCompletionResponse(BaseModel):
     choices: list[Choice]
     usage: Usage | None = None
     routed_via: str | None = None
+    citations: list[Citation] | None = None
 
 
 class ChatCompletionChunk(BaseModel):

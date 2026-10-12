@@ -74,6 +74,16 @@ The first version of a key becomes active; later ones wait for `activate`, so a 
 
 `pl_runs` holds status, budget and spend; `pl_steps` one row per attempt with model, prompt version, tokens, cost and error; `pl_events` the ordered trace (`run.started`, `step.queued`, `llm.call` with tokens and cost, `step.failed`, ...). `build_router(runner, org_of, session)` serves `GET /pipeline/runs`, `GET /pipeline/runs/{id}` (steps and events) and `POST /pipeline/runs/{id}/resume`, limited to the caller's organization. Use an `org_of` that requires an admin role: resuming approves work.
 
+## Evals
+
+An eval suite is a folder `evals/<suite>/` with `cases.jsonl` (one JSON object per line: `input`, and `expected` or `rubric`; `id` optional) and optionally `rubric.md` (instructions for the LLM judge) or `scorer.py` (`def score(case, output) -> float | (float, reason)`, between 0 and 1; it is your own code and runs as you).
+
+```bash
+tsp-pipeline eval words --prompt translate.word@2 --model claude-haiku-5-5 --threshold 0.9 --max-drop 0.05
+```
+
+Each case renders the prompt with the case `input` as variables and scores the reply: `exact` (equals `expected`), `python` (the suite's `scorer.py`) or `judge` (an LLM grades it against the case's or the suite's rubric, `--judge-model`). The scorer is chosen by what the suite contains unless `--scorer` says otherwise. The mean score and every case's output, score and reason are stored in `pl_eval_runs`. Unless `--no-compare` is given, the **active** prompt version is scored on the same cases too: the run fails (exit code 1) if the mean is under `--threshold`, or more than `--max-drop` below the active version. A case that raises scores 0 and is counted in `n_errors`; it does not stop the run. In CI use a cheap model and a threshold. From Python: `run_eval(session, load_suite("evals", "words"), "key@2", target)`, where `target(case_input, prompt)` can run a whole workflow instead of a single prompt.
+
 ## Not built yet
 
-Staff console views of runs and prompts (the API returns the same data), `ctx.batch` (Message Batches), prompt caching and citations in `tsp.ai`, the glossary-aware `translate` helper, and the eval harness (`tsp-pipeline eval`). These are the rest of the K3 brief.
+Staff console views of runs and prompts (the API returns the same data), `ctx.batch` (waiting on a Message Batch from inside a step; the batches client exists in `tsp.ai`). The rest of the K3 brief is in `tsp.ai` (see [the AI client](ai.md)).

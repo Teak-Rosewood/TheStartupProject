@@ -10,7 +10,7 @@ amount = 99900
 currency = "INR"
 interval = "month"
 provider_plan_id = "plan_REPLACE_ME"
-features = { seats = 10, exports = true, vector_docs = 1000, vector_chunks = 50000 }
+features = { seats = 10, exports = true, vector_docs = 1000, vector_chunks = 50000, crawl_pages_month = 2000, crawl_depth = 3, crawl_refresh_min_hours = 24 }
 
 [[plan]]
 code = "credits_1000"
