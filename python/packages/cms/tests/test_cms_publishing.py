@@ -234,7 +234,7 @@ async def test_editing_after_approval_returns_to_draft_and_a_published_item_keep
         ORG, item.id, ANN
     )  # a published item with pending changes goes back through review
     await svc.approve(ORG, item.id, BO)
-    await svc.publish(ORG, item.id, BO)
+    await svc.publish(ORG, item.id, BO, kind="update", public_note="Reworded step 2.")
     assert (await svc.get_published(ORG, "pancakes")).title == "Pancakes v3"
 
 
