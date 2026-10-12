@@ -7,6 +7,7 @@
   - [Payments](modules/payments.md) — Razorpay, Stripe, GST invoices, credits
   - [Accounts and staff console](modules/accounts-admin.md) — users, teams, API keys, admin login
   - [Audit and compliance](modules/compliance.md) — consent, export, deletion, audit log
+  - [Product operations](modules/product-ops.md) — flags, uploads, usage metering, AI gateway
   - [AI (`tsp.ai`)](modules/ai.md) — multi-provider LLM client, router, verified model catalog, OpenAI-compatible server
 - [Startup guide](startup/README.md) — company setup, launch checklist, metrics, security baseline, pricing and GST, support, marketing
 - [Legal templates](legal/README.md) — Terms, Privacy, Cookie, AUP, Refund, DPA, sub-processors, retention, incident response

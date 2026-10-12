@@ -81,6 +81,7 @@ What gets more expensive as you grow, and when: a second host plus ALB (+$20–4
 | [13 Library modules](13-library-modules.md) | which `tsp.*` package does what |
 | [14 Payments setup](14-payments.md) | gateway secrets, seller details, webhook URL |
 | [15 Email setup](15-email.md) | SES domain, DNS records, production access |
+| [16 AI gateway and uploads](16-ai-gateway.md) | provider keys secret, uploads bucket, web app sign-in config |
 | [17 Vector search](17-vector-search.md) | pgvector first, S3 Vectors and OpenSearch later; options and cost by size |
 | [18 Web ingestion](18-web-ingestion.md) | scraping tools compared (Scrapy, Crawl4AI, Crawlee, Firecrawl), crawl-to-vector pipeline, guardrails, cost |
 
