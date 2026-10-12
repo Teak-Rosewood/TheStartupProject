@@ -133,6 +133,27 @@ class AiConfig(BaseModel):
     default_rpm: int = Field(default=20, ge=1)
 
 
+class VectorConfig(BaseModel):
+    """Vector search (docs/aws/17-vector-search.md). ``pgvector`` costs nothing extra: it lives in the
+    Postgres you already run. ``s3vectors`` adds a vector bucket for large or cold corpora."""
+
+    mode: Literal["pgvector", "s3vectors", "opensearch"] = "pgvector"
+    dims: int = Field(
+        default=1024, ge=2, le=4000
+    )  # fixed per database when the first migration runs
+    embed_model: str = "text-embedding-3-small"
+    max_chunks_per_org: int | None = Field(default=None, ge=1)
+
+    @field_validator("mode")
+    @classmethod
+    def _implemented(cls, v: str) -> str:
+        if v == "opensearch":
+            raise ValueError(
+                "the opensearch vector backend is not implemented; use pgvector or s3vectors"
+            )
+        return v
+
+
 class GithubConfig(BaseModel):
     owner: str
     repo: str
@@ -158,6 +179,7 @@ class EnvConfig(BaseModel):
     notify: NotifyConfig = NotifyConfig()
     growth: GrowthConfig = GrowthConfig()
     uploads: UploadsConfig = UploadsConfig()
+    vector: VectorConfig = VectorConfig()
     ai: AiConfig = AiConfig()
     edge: EdgeConfig = EdgeConfig()
     github: GithubConfig

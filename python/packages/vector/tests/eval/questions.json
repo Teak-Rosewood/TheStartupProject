@@ -1,0 +1,82 @@
+[
+ {
+  "question": "How do I make pancake batter fluffy?",
+  "expected": "pancakes"
+ },
+ {
+  "question": "When do I flip pancakes?",
+  "expected": "pancakes"
+ },
+ {
+  "question": "What stops risotto from being creamy?",
+  "expected": "risotto"
+ },
+ {
+  "question": "How do I add stock to arborio rice?",
+  "expected": "risotto"
+ },
+ {
+  "question": "How long does sourdough proof?",
+  "expected": "sourdough"
+ },
+ {
+  "question": "What temperature for baking bread in a dutch oven?",
+  "expected": "sourdough"
+ },
+ {
+  "question": "How do I keep avocado from browning?",
+  "expected": "guacamole"
+ },
+ {
+  "question": "What goes into guacamole?",
+  "expected": "guacamole"
+ },
+ {
+  "question": "What do I marinate chicken in for tikka?",
+  "expected": "tikka"
+ },
+ {
+  "question": "What do I serve with tikka masala?",
+  "expected": "tikka"
+ },
+ {
+  "question": "How long do I boil pork bones for ramen?",
+  "expected": "ramen"
+ },
+ {
+  "question": "What is tare in ramen?",
+  "expected": "ramen"
+ },
+ {
+  "question": "How do I get fudgy brownies?",
+  "expected": "brownies"
+ },
+ {
+  "question": "How long do brownies bake?",
+  "expected": "brownies"
+ },
+ {
+  "question": "How do I make hummus extra smooth?",
+  "expected": "hummus"
+ },
+ {
+  "question": "What do I finish hummus with?",
+  "expected": "hummus"
+ },
+ {
+  "question": "How long do I sear salmon skin side?",
+  "expected": "salmon"
+ },
+ {
+  "question": "Should I rinse and dry the salmon fillet?",
+  "expected": "salmon"
+ },
+ {
+  "question": "How long should kimchi ferment?",
+  "expected": "kimchi"
+ },
+ {
+  "question": "What is in the kimchi paste?",
+  "expected": "kimchi"
+ }
+]

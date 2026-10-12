@@ -8,12 +8,13 @@ import logging
 import time
 from collections.abc import AsyncGenerator, AsyncIterator, Awaitable, Callable
 from dataclasses import dataclass
-from typing import Any, cast
+from typing import Annotated, Any, Literal, cast
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse, StreamingResponse
+from pydantic import BaseModel, Field
 from tsp.accounts import Accounts, ApiKeyInfo
-from tsp.ai import LLMClient, ProviderHttpError
+from tsp.ai import EmbeddingDimensionError, LLMClient, ProviderHttpError
 from tsp.ai.models import ChatCompletionChunk, ChatCompletionResponse
 from tsp.ai.server import ChatRequest, error_body, http_status, sse_frame
 from tsp.cache import Cache
@@ -23,6 +24,17 @@ from tsp.payments import InsufficientCredits, Payments
 
 log = logging.getLogger("tsp_api.ai")
 KIND = "ai.chat"
+EMBED_KIND = "ai.embed"
+MAX_EMBED_INPUTS = 256  # per request; larger jobs batch on the client side
+
+
+class EmbeddingRequest(BaseModel):
+    """Body of ``POST /v1/embeddings`` (OpenAI shape, plus ``input_type`` for retrieval models)."""
+
+    model: str = Field(min_length=1)  # required: embeddings have no "auto" routing
+    input: str | Annotated[list[str], Field(max_length=MAX_EMBED_INPUTS)]
+    dimensions: int | None = Field(default=None, ge=1)
+    input_type: Literal["document", "query"] = "document"
 
 
 @dataclass
@@ -45,7 +57,7 @@ def _err(status: int, kind: str, message: str) -> HTTPException:
 def build_router(gw: AiGateway) -> APIRouter:
     r = APIRouter()
 
-    async def authenticate(request: Request) -> ApiKeyInfo:
+    async def authenticate(request: Request, scope: str = "chat") -> ApiKeyInfo:
         auth = request.headers.get("authorization", "")
         raw = (
             auth[7:] if auth.lower().startswith("bearer ") else request.headers.get("x-api-key", "")
@@ -56,11 +68,13 @@ def build_router(gw: AiGateway) -> APIRouter:
             info = await gw.accounts.verify_api_key(s, raw)
         if info is None:
             raise _err(401, "invalid_api_key", "invalid or revoked API key")
-        if "chat" not in info.scopes:
-            raise _err(403, "insufficient_scope", "this API key does not have the 'chat' scope")
+        if scope not in info.scopes:
+            raise _err(403, "insufficient_scope", f"this API key does not have the '{scope}' scope")
         return info
 
-    async def preflight(request: Request, key: ApiKeyInfo, messages: list[dict[str, Any]]) -> None:
+    async def preflight(
+        request: Request, key: ApiKeyInfo, messages: list[dict[str, Any]], kind: str = KIND
+    ) -> None:
         db = request.app.state.db
         async with db.session() as s:
             if await gw.flags.killed(s, "ai"):
@@ -85,7 +99,7 @@ def build_router(gw: AiGateway) -> APIRouter:
                     s,
                     org_id=key.org_id,
                     api_key_id=key.id,
-                    kind=KIND,
+                    kind=kind,
                     status="blocked",
                     request_id=request.state.request_id,
                     reason=reason[:200],
@@ -102,6 +116,7 @@ def build_router(gw: AiGateway) -> APIRouter:
         tout: int,
         started: float,
         status: str = "ok",
+        kind: str = KIND,
     ) -> int:
         """Charge and record. Idempotent per request id; never charges more than the balance holds."""
         credits = price_credits(tin, tout, gw.rates) if status == "ok" else 0
@@ -118,7 +133,7 @@ def build_router(gw: AiGateway) -> APIRouter:
                 if charged:
                     try:
                         await gw.payments.spend_credits(
-                            s, key.org_id, charged, reason="ai.chat", ref=f"ai:{rid}"
+                            s, key.org_id, charged, reason=kind, ref=f"ai:{rid}"
                         )
                     except InsufficientCredits:  # raced with another request
                         charged = 0
@@ -126,7 +141,7 @@ def build_router(gw: AiGateway) -> APIRouter:
                 s,
                 org_id=key.org_id,
                 api_key_id=key.id,
-                kind=KIND,
+                kind=kind,
                 model=model,
                 provider=provider,
                 units_in=tin,
@@ -237,6 +252,52 @@ def build_router(gw: AiGateway) -> APIRouter:
             yield "data: [DONE]\n\n"
 
         return StreamingResponse(frames(), media_type="text/event-stream")
+
+    @r.post("/v1/embeddings")
+    async def embeddings(body: EmbeddingRequest, request: Request) -> Any:
+        key = await authenticate(request, "embed")
+        texts = [body.input] if isinstance(body.input, str) else body.input
+        if not texts:
+            raise _err(400, "invalid_request_error", "input must contain at least one text")
+        await preflight(
+            request, key, [{"role": "user", "content": t} for t in texts], kind=EMBED_KIND
+        )
+        started = time.perf_counter()
+        try:
+            resp = await gw.client.embeddings.create(
+                body.model, texts, dims=body.dimensions, input_type=body.input_type
+            )
+        except ProviderHttpError as e:
+            await settle(
+                request, key, model=body.model, provider=None, tin=0, tout=0,
+                started=started, status="error", kind=EMBED_KIND,
+            )  # fmt: skip
+            return JSONResponse(error_body(str(e), "upstream_error"), status_code=http_status(e))
+        except EmbeddingDimensionError as e:
+            await settle(
+                request, key, model=body.model, provider=None, tin=0, tout=0,
+                started=started, status="error", kind=EMBED_KIND,
+            )  # fmt: skip
+            return JSONResponse(error_body(str(e), "upstream_error"), status_code=502)
+        except ValueError as e:
+            raise _err(400, "invalid_request_error", str(e)) from e
+        tokens = resp.usage.total_tokens or estimate_tokens(" ".join(texts))
+        charged = await settle(
+            request, key, model=resp.model, provider=resp.provider, tin=tokens, tout=0,
+            started=started, kind=EMBED_KIND,
+        )  # fmt: skip
+        return JSONResponse(
+            {
+                "object": "list",
+                "model": resp.model,
+                "data": [
+                    {"object": "embedding", "index": d.index, "embedding": d.embedding}
+                    for d in resp.data
+                ],
+                "usage": {"prompt_tokens": tokens, "total_tokens": tokens},
+            },
+            headers={"x-credits-charged": str(charged)},
+        )
 
     @r.get("/v1/models")
     async def models(request: Request) -> dict[str, Any]:

@@ -57,6 +57,10 @@ class ObjectStore(Protocol):
 
     async def delete(self, key: str) -> None: ...
 
+    async def get(
+        self, key: str
+    ) -> bytes: ...  # whole object; for server-side processing of uploads
+
 
 class S3ObjectStore:
     def __init__(self, bucket: str, region: str | None = None):
@@ -113,6 +117,11 @@ class S3ObjectStore:
         async with self._client() as s3:
             await s3.delete_object(Bucket=self.bucket, Key=key)
 
+    async def get(self, key: str) -> bytes:
+        async with self._client() as s3:
+            r = await s3.get_object(Bucket=self.bucket, Key=key)
+            return bytes(await r["Body"].read())
+
 
 class LocalObjectStore:
     """For tests and development: presigned 'posts' are plain dicts and objects are files in a directory."""
@@ -138,6 +147,9 @@ class LocalObjectStore:
 
     async def delete(self, key: str) -> None:
         (self.dir / key).unlink(missing_ok=True)
+
+    async def get(self, key: str) -> bytes:
+        return (self.dir / key).read_bytes()
 
     def put(
         self, key: str, data: bytes

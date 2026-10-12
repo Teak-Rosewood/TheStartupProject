@@ -702,3 +702,57 @@ def test_uploads_and_ai_modes_pass_security_checks():
     )
     enable_checks(app)
     app.synth()
+
+
+# -- vector search ---------------------------------------------------------------------------
+
+
+def test_pgvector_default_adds_settings_but_no_resources():
+    t = backend()
+    assert not t.find_resources("AWS::S3Vectors::VectorBucket")
+    api = next(
+        c
+        for r in t.find_resources("AWS::ECS::TaskDefinition").values()
+        for c in r["Properties"]["ContainerDefinitions"]
+        if any(e["Name"] == "VECTOR_DIMS" for e in c.get("Environment", []))
+    )
+    env = {e["Name"]: e.get("Value") for e in api["Environment"]}
+    assert (
+        env["VECTOR_BACKEND"] == "pgvector"
+        and env["VECTOR_DIMS"] == "1024"
+        and "VECTOR_S3_BUCKET" not in env
+    )
+
+
+def test_s3vectors_mode_creates_a_retained_bucket_and_scopes_access_to_it():
+    from tsp.infra import VectorConfig
+
+    t = backend(vector=VectorConfig(mode="s3vectors", dims=768, max_chunks_per_org=500_000))
+    (bucket,) = t.find_resources("AWS::S3Vectors::VectorBucket").values()
+    assert bucket["DeletionPolicy"] == "Retain"
+    blob = json.dumps(t.find_resources("AWS::IAM::Policy"))
+    assert "s3vectors:QueryVectors" in blob and "/index/*" in blob
+    api = next(
+        c
+        for r in t.find_resources("AWS::ECS::TaskDefinition").values()
+        for c in r["Properties"]["ContainerDefinitions"]
+        if any(e["Name"] == "VECTOR_S3_BUCKET" for e in c.get("Environment", []))
+    )
+    env = {e["Name"]: e.get("Value") for e in api["Environment"]}
+    assert env["VECTOR_DIMS"] == "768" and env["VECTOR_MAX_CHUNKS_PER_ORG"] == "500000"
+
+
+def test_opensearch_backend_is_refused_until_it_exists():
+    from tsp.infra import VectorConfig
+
+    with pytest.raises(ValueError, match="not implemented"):
+        VectorConfig(mode="opensearch")
+
+
+def test_s3vectors_mode_passes_security_checks():
+    from tsp.infra import VectorConfig
+
+    app = new_app()
+    AppStage(app, "t", config=make_config(vector=VectorConfig(mode="s3vectors")))
+    enable_checks(app)
+    app.synth()

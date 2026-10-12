@@ -26,7 +26,7 @@ from .nag import acknowledge_known
 from .network import Network
 from .nosql import Store
 from .observability import Alarms, EdgeAlarms
-from .product import AiGateway, Uploads
+from .product import AiGateway, Uploads, Vector
 
 # Feature flags the constructs rely on; a plain ``cdk.App()`` would silently use legacy behavior.
 APP_CONTEXT = {
@@ -132,6 +132,7 @@ class BackendStack(cdk.Stack):
         )
         self.uploads = Uploads(self, "Uploads", config=config) if config.uploads.enabled else None
         self.ai = AiGateway(self, "Ai", config=config)
+        self.vector = Vector(self, "Vector", config=config)
         self.growth = Growth(self, "Growth", config=config)
         self.mail = Mail(self, "Mail", config=config) if config.notify.enabled else None
         self.admin_pool = AdminPool(self, "Staff", config=config) if config.admin.enabled else None
@@ -153,6 +154,7 @@ class BackendStack(cdk.Stack):
             environment["CACHE_URL"] = self.cache.url
         secrets = dict(self.postgres.secrets)
         environment.update(self.ai.environment)
+        environment.update(self.vector.environment)
         secrets.update(self.ai.secrets)
         if self.uploads:
             environment.update(self.uploads.environment)
@@ -197,6 +199,7 @@ class BackendStack(cdk.Stack):
             self.billing.grant(self.api.task_definition.task_role)
         if self.mail:
             self.mail.grant(self.api.task_definition.task_role)
+        self.vector.grant(self.api.task_definition.task_role)
         if self.uploads:
             self.uploads.grant(self.api.task_definition.task_role)
         # Account deletion: end sessions, disable and delete users of this pool only.
@@ -307,4 +310,16 @@ class AppStage(cdk.Stage):
             )
             if b is not None
         ]
-        acknowledge_known(self, config, self.backend.get_logical_id(asg), bucket_ids)
+        vector_ids = (
+            [
+                self.backend.get_logical_id(
+                    cast(
+                        cdk.CfnElement,
+                        self.backend.vector.bucket.node.default_child or self.backend.vector.bucket,
+                    )
+                )
+            ]
+            if self.backend.vector.bucket
+            else []
+        )
+        acknowledge_known(self, config, self.backend.get_logical_id(asg), bucket_ids, vector_ids)

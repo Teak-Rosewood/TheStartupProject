@@ -16,11 +16,13 @@ from .config import (
     PaymentsConfig,
     SellerConfig,
     UploadsConfig,
+    VectorConfig,
 )
 from .nag import enable_checks
 from .stacks import AppStage, new_app
 
 __all__ = [
+    "VectorConfig",
     "AiConfig",
     "UploadsConfig",
     "EdgeConfig",

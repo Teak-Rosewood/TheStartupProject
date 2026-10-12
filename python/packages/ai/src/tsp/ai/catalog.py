@@ -29,6 +29,7 @@ class ModelResult(BaseModel):
     status: Status
     latency_ms: float | None = None
     error: str | None = None
+    dims: int | None = None  # embedding models only: length of the vector the probe returned
     checked_at: float = Field(default_factory=time.time)
 
 
@@ -39,10 +40,16 @@ class ProviderResult(BaseModel):
     error: str | None = None
     listed: int = 0
     models: list[ModelResult] = Field(default_factory=list)
+    embedding_models: list[ModelResult] = Field(default_factory=list)
 
     @property
     def ok_models(self) -> list[ModelResult]:
         return [m for m in self.models if m.status is Status.OK]
+
+    @property
+    def ok_embedding_models(self) -> dict[str, int | None]:
+        """Embedding models that answered, with the dims the probe saw."""
+        return {m.id: m.dims for m in self.embedding_models if m.status is Status.OK}
 
 
 class ModelCatalog(BaseModel):

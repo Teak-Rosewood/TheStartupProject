@@ -6,6 +6,7 @@ import aws_cdk as cdk
 import aws_cdk.aws_ecs as ecs
 import aws_cdk.aws_iam as iam
 import aws_cdk.aws_s3 as s3
+import aws_cdk.aws_s3vectors as s3vectors
 import aws_cdk.aws_secretsmanager as secretsmanager
 from constructs import Construct
 
@@ -70,3 +71,49 @@ class AiGateway(Construct):
             )
             for name in a.provider_keys:
                 self.secrets[name] = ecs.Secret.from_secrets_manager(sec, name)
+
+
+class Vector(Construct):
+    """Vector search settings for the API. ``pgvector`` needs no resources (the database image has the
+    extension). ``s3vectors`` creates a vector bucket the API may read and write."""
+
+    def __init__(self, scope: Construct, id: str, *, config: EnvConfig) -> None:
+        super().__init__(scope, id)
+        v = config.vector
+        self.bucket: s3vectors.CfnVectorBucket | None = None
+        self.environment = {
+            "VECTOR_BACKEND": v.mode,
+            "VECTOR_DIMS": str(v.dims),
+            "VECTOR_EMBED_MODEL": v.embed_model,
+        }
+        if v.max_chunks_per_org:
+            self.environment["VECTOR_MAX_CHUNKS_PER_ORG"] = str(v.max_chunks_per_org)
+        if v.mode == "s3vectors":
+            self.bucket = s3vectors.CfnVectorBucket(
+                self,
+                "Bucket",
+                vector_bucket_name=f"{config.prefix}-vectors-{config.account}",
+            )
+            self.bucket.apply_removal_policy(cdk.RemovalPolicy.RETAIN)
+            self.environment["VECTOR_S3_BUCKET"] = f"{config.prefix}-vectors-{config.account}"
+
+    def grant(self, role: iam.IRole) -> None:
+        if self.bucket is None:
+            return
+        arn = self.bucket.attr_vector_bucket_arn
+        role.add_to_principal_policy(
+            iam.PolicyStatement(
+                actions=[
+                    "s3vectors:CreateIndex",
+                    "s3vectors:DeleteIndex",
+                    "s3vectors:GetIndex",
+                    "s3vectors:ListIndexes",
+                    "s3vectors:PutVectors",
+                    "s3vectors:GetVectors",
+                    "s3vectors:ListVectors",
+                    "s3vectors:QueryVectors",
+                    "s3vectors:DeleteVectors",
+                ],
+                resources=[arn, f"{arn}/index/*"],
+            )
+        )
