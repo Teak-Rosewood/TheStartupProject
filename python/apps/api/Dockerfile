@@ -13,7 +13,10 @@ RUN useradd --system --uid 10001 --no-create-home app
 WORKDIR /app
 COPY --from=build /app/.venv /app/.venv
 COPY apps/api/migrations /app/migrations
-ENV PATH="/app/.venv/bin:$PATH" PYTHONUNBUFFERED=1 TSP_MIGRATIONS=/app/migrations
+# Rendered legal documents (docs/legal -> documents.json); CI renders them before the build.
+COPY apps/api/legal /app/legal
+COPY apps/api/plans.toml /app/plans.toml
+ENV PATH="/app/.venv/bin:$PATH" PYTHONUNBUFFERED=1 TSP_MIGRATIONS=/app/migrations TSP_MIGRATE_MODULES=tsp.audit,tsp.compliance,tsp.accounts,tsp.payments,tsp.jobs,tsp.notify,tsp.growth,tsp.flags,tsp.storage,tsp.metering TSP_LEGAL_MANIFEST=/app/legal/documents.json TSP_PLANS_FILE=/app/plans.toml
 USER app
 EXPOSE 8000
 CMD ["tsp-api"]

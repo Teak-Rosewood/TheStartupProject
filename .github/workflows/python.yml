@@ -41,6 +41,13 @@ jobs:
       - run: uv run mypy packages apps/api/src
       - run: uv run pytest --cov=tsp
 
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 docs/legal/check_placeholders.py
+      - run: python3 docs/check_links.py
+
   postgres-backup:
     # Proves backup + point-in-time restore against an S3 mock, using the exact production image.
     runs-on: ubuntu-latest
@@ -53,6 +60,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: render the legal documents the image ships with
+        run: make legal-render
       - run: docker build -f python/apps/api/Dockerfile -t tsp-api:test python
       - name: container starts, serves health, and runs as non-root
         run: |

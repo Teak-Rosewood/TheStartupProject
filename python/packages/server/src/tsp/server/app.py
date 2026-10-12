@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import asyncio
 import hmac
+import json
 import logging
 import time
 import uuid
-from collections.abc import AsyncIterator, Awaitable, Callable
-from contextlib import asynccontextmanager
+from collections.abc import AsyncIterator, Awaitable, Callable, Sequence
+from contextlib import AbstractAsyncContextManager, AsyncExitStack, asynccontextmanager
 
 from fastapi import APIRouter, FastAPI, Request, Response
 from fastapi.exceptions import RequestValidationError
@@ -30,8 +31,16 @@ def _error(status: int, kind: str, message: str, request_id: str | None = None) 
     return JSONResponse(body, status_code=status)
 
 
-def create_app(settings: Settings) -> FastAPI:
-    """Build the app. Include your own routers with ``app.include_router(r, prefix=settings.api_prefix)``."""
+def create_app(
+    settings: Settings,
+    *,
+    background: Sequence[Callable[[FastAPI], AbstractAsyncContextManager[None]]] = (),
+) -> FastAPI:
+    """Build the app. Include your own routers with ``app.include_router(r, prefix=settings.api_prefix)``.
+
+    ``background`` items are async context managers entered after the database, cache and clients
+    exist and exited (in reverse order) before they close; use them for in-process workers.
+    """
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
@@ -52,7 +61,10 @@ def create_app(settings: Settings) -> FastAPI:
             else None
         )
         try:
-            yield
+            async with AsyncExitStack() as stack:
+                for factory in background:
+                    await stack.enter_async_context(factory(app))
+                yield
         finally:
             if app.state.db:
                 await app.state.db.dispose()
@@ -80,6 +92,7 @@ def create_app(settings: Settings) -> FastAPI:
         request: Request, call_next: Callable[[Request], Awaitable[Response]]
     ) -> Response:
         request_id = request.headers.get("x-request-id") or uuid.uuid4().hex[:16]
+        request.state.request_id = request_id
         start = time.perf_counter()
         expected = settings.origin_verify
         if expected and request.url.path != health_path:
@@ -104,7 +117,20 @@ def create_app(settings: Settings) -> FastAPI:
 
     @app.exception_handler(StarletteHTTPException)
     async def http_error(request: Request, exc: StarletteHTTPException) -> JSONResponse:
-        resp = _error(exc.status_code, "http_error", str(exc.detail))
+        detail = exc.detail
+        if isinstance(detail, dict):  # structured errors: {"type": ..., "message": ..., **extra}
+            extra = {k: v for k, v in detail.items() if k not in ("type", "message")}
+            resp = _error(
+                exc.status_code,
+                str(detail.get("type", "http_error")),
+                str(detail.get("message", "")),
+            )
+            if extra:
+                resp_body = json.loads(resp.body)
+                resp_body["error"].update(extra)
+                resp = JSONResponse(resp_body, status_code=exc.status_code)
+        else:
+            resp = _error(exc.status_code, "http_error", str(detail))
         resp.headers.update(exc.headers or {})
         return resp
 

@@ -1,0 +1,38 @@
+---
+import WaitlistForm from "../components/WaitlistForm.astro";
+import Base from "../layouts/Base.astro";
+import { site } from "../config";
+
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@graph": [
+    { "@type": "Organization", name: site.company, url: site.url, email: site.supportEmail },
+    { "@type": "WebSite", name: site.name, url: site.url },
+  ],
+};
+const benefits = [
+  { title: "Benefit one", body: "Say what changes for the customer, in their words, not what the feature is called." },
+  { title: "Benefit two", body: "Back it with a number, a quote or a short demo. Specific beats impressive." },
+  { title: "Benefit three", body: "Remove the last doubt: price, setup time, data safety, or how to leave." },
+];
+---
+<Base title={site.name} description={site.description} event="landing_viewed" jsonLd={jsonLd}>
+  <div class="wrap">
+    <section class="hero">
+      <h1>{site.tagline}</h1>
+      <p class="lead">{site.description}</p>
+      <WaitlistForm source="hero" />
+    </section>
+    <section aria-labelledby="benefits">
+      <h2 id="benefits">Why people choose {site.name}</h2>
+      <div class="grid">
+        {benefits.map((b) => <div class="card"><h3>{b.title}</h3><p>{b.body}</p></div>)}
+      </div>
+    </section>
+    <section aria-labelledby="faq">
+      <h2 id="faq">Questions</h2>
+      <details class="card"><summary>Is my data safe?</summary><p>Your data is stored in India, encrypted in transit and at rest. Read the <a href="/legal/privacy">privacy policy</a>.</p></details>
+      <details class="card" style="margin-top:.75rem"><summary>How much does it cost?</summary><p>See <a href="/pricing">pricing</a>. Prices include GST for customers in India.</p></details>
+    </section>
+  </div>
+</Base>

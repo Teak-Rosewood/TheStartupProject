@@ -1,0 +1,18 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "tsp-audit"
+version = "0.1.0"
+description = "Append-only audit log for administrative and security-relevant actions."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+dependencies = ["sqlalchemy[asyncio]>=2", "tsp-db"]
+
+[tool.uv.sources]
+tsp-db = { workspace = true }
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/tsp"]

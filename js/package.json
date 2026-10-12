@@ -1,0 +1,5 @@
+{
+  "name": "thestartupproject-js",
+  "private": true,
+  "workspaces": ["packages/*"]
+}

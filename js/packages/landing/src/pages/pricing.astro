@@ -1,0 +1,36 @@
+---
+import Base from "../layouts/Base.astro";
+import WaitlistForm from "../components/WaitlistForm.astro";
+import { site } from "../config";
+import plans from "../data/plans.json";
+
+type Plan = { code: string; name: string; kind: string; amount: number; currency: string; interval?: string; credits?: number; features?: Record<string, unknown> };
+const list = (plans as Plan[]).sort((a, b) => a.amount - b.amount);
+const money = (p: Plan) => new Intl.NumberFormat(p.currency === "INR" ? "en-IN" : "en", { style: "currency", currency: p.currency, maximumFractionDigits: 0 }).format(p.amount / 100);
+const per = (p: Plan) => (p.kind === "subscription" ? (p.interval === "year" ? "/ year" : "/ month") : "one time");
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  name: site.name,
+  applicationCategory: "BusinessApplication",
+  offers: list.map((p) => ({ "@type": "Offer", name: p.name, price: (p.amount / 100).toFixed(2), priceCurrency: p.currency })),
+};
+---
+<Base title="Pricing" description={`Simple pricing for ${site.name}. Prices in INR include GST. Start free and upgrade when you need more.`} event="pricing_viewed" jsonLd={jsonLd}>
+  <div class="wrap">
+    <h1>Pricing</h1>
+    <p class="muted">Prices include GST for customers in India. Cancel any time; see the <a href="/legal/refund">refund policy</a>.</p>
+    <div class="grid">
+      {list.map((p) => (
+        <div class="card">
+          <h2>{p.name}</h2>
+          <p class="price">{money(p)} <span class="muted" style="font-size:1rem;font-weight:400">{per(p)}</span></p>
+          {p.credits ? <p>{p.credits.toLocaleString("en-IN")} credits</p> : null}
+          <ul>{Object.entries(p.features ?? {}).map(([k, v]) => <li>{k.replace(/_/g, " ")}{typeof v === "boolean" ? "" : `: ${v}`}</li>)}</ul>
+        </div>
+      ))}
+    </div>
+    <h2>Get started</h2>
+    <WaitlistForm source="pricing" />
+  </div>
+</Base>

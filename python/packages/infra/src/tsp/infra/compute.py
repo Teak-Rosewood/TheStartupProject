@@ -16,6 +16,31 @@ from constructs import Construct
 
 from .config import EnvConfig
 
+_RETENTION = {
+    1: logs.RetentionDays.ONE_DAY,
+    3: logs.RetentionDays.THREE_DAYS,
+    5: logs.RetentionDays.FIVE_DAYS,
+    7: logs.RetentionDays.ONE_WEEK,
+    14: logs.RetentionDays.TWO_WEEKS,
+    30: logs.RetentionDays.ONE_MONTH,
+    60: logs.RetentionDays.TWO_MONTHS,
+    90: logs.RetentionDays.THREE_MONTHS,
+    120: logs.RetentionDays.FOUR_MONTHS,
+    150: logs.RetentionDays.FIVE_MONTHS,
+    180: logs.RetentionDays.SIX_MONTHS,
+    365: logs.RetentionDays.ONE_YEAR,
+    400: logs.RetentionDays.THIRTEEN_MONTHS,
+    545: logs.RetentionDays.EIGHTEEN_MONTHS,
+    731: logs.RetentionDays.TWO_YEARS,
+    1096: logs.RetentionDays.THREE_YEARS,
+    1827: logs.RetentionDays.FIVE_YEARS,
+    2192: logs.RetentionDays.SIX_YEARS,
+    2557: logs.RetentionDays.SEVEN_YEARS,
+    2922: logs.RetentionDays.EIGHT_YEARS,
+    3288: logs.RetentionDays.NINE_YEARS,
+    3653: logs.RetentionDays.TEN_YEARS,
+}
+
 CLOUDFRONT_PREFIX_LIST = "com.amazonaws.global.cloudfront.origin-facing"
 
 # disk_used_percent{path=/data} and mem_used_percent in namespace TSP/Host (see observability.py).
@@ -48,6 +73,7 @@ class Host(Construct):
         az = vpc.availability_zones[cfg.az_index]
         subnets = ec2.SubnetSelection(subnet_type=ec2.SubnetType.PUBLIC, availability_zones=[az])
 
+        self.log_retention = _RETENTION[env.log_retention_days]
         self.cluster = ecs.Cluster(self, "Cluster", vpc=vpc, cluster_name=f"{env.prefix}-cluster")
 
         self.elastic_ip = ec2.CfnEIP(self, "Ip", domain="vpc")
@@ -228,7 +254,7 @@ class AppService(Construct):
         health_check: list[str] | None = None,
         volumes: Sequence[tuple[str, str]] = (),
         user: str | None = None,
-        log_retention: logs.RetentionDays = logs.RetentionDays.TWO_WEEKS,
+        log_retention: logs.RetentionDays | None = None,
     ) -> None:
         super().__init__(scope, id)
         self.task_definition = ecs.Ec2TaskDefinition(
@@ -252,7 +278,9 @@ class AppService(Construct):
             environment=dict(environment or {}),
             secrets=dict(secrets or {}),
             essential=True,
-            logging=ecs.LogDrivers.aws_logs(stream_prefix=name, log_retention=log_retention),
+            logging=ecs.LogDrivers.aws_logs(
+                stream_prefix=name, log_retention=log_retention or host.log_retention
+            ),
             health_check=ecs.HealthCheck(
                 command=["CMD-SHELL", *health_check] if health_check else ["CMD-SHELL", "exit 0"],
                 interval=cdk.Duration.seconds(15),

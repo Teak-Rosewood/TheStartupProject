@@ -8,15 +8,20 @@ import aws_cdk as cdk
 import aws_cdk.aws_certificatemanager as acm
 import aws_cdk.aws_ecr as ecr
 import aws_cdk.aws_ecs as ecs
+import aws_cdk.aws_iam as iam
 from constructs import Construct
 
-from .auth import UserPool
+from .auth import AdminPool, UserPool
+from .billing import Billing
 from .cache import Cache
 from .compute import AppService, Host
 from .config import EnvConfig
 from .database import Postgres
 from .edge import Site
+from .exports import Exports
 from .github_oidc import GithubOidc
+from .growth import Growth
+from .mail import Mail
 from .nag import acknowledge_known
 from .network import Network
 from .nosql import Store
@@ -118,6 +123,15 @@ class BackendStack(cdk.Stack):
         self.cache = Cache(self, "Cache", config=config, host=self.host, vpc=self.network.vpc)
         self.store = Store(self, "Store", config=config)
         self.auth = UserPool(self, "Auth", config=config, certificate=auth_certificate)
+        self.exports = Exports(self, "Exports", config=config)
+        self.billing = (
+            Billing(self, "Billing", config=config)
+            if (config.payments.razorpay or config.payments.stripe)
+            else None
+        )
+        self.growth = Growth(self, "Growth", config=config)
+        self.mail = Mail(self, "Mail", config=config) if config.notify.enabled else None
+        self.admin_pool = AdminPool(self, "Staff", config=config) if config.admin.enabled else None
 
         environment = {
             "TSP_ENV": config.name,
@@ -126,12 +140,34 @@ class BackendStack(cdk.Stack):
             "AWS_REGION": config.region,
             "TSP_MIGRATE_ON_START": "1",  # schema first, under an advisory lock; failure rolls back
             "DYNAMODB_TABLE": self.store.table.table_name,
+            "EXPORT_BUCKET": self.exports.bucket.bucket_name,
+            "COGNITO_USER_POOL_ID": self.auth.pool.user_pool_id,
             "AUTH_ISSUER": self.auth.issuer,
             "AUTH_CLIENT_IDS": self.auth.client_ids,
             **self.postgres.env,
         }
         if self.cache.url:
             environment["CACHE_URL"] = self.cache.url
+        secrets = dict(self.postgres.secrets)
+        environment.update(self.growth.environment)
+        secrets.update(self.growth.secrets)
+        if self.mail:
+            environment.update(self.mail.environment)
+            secrets.update(self.mail.secrets)
+        if self.billing:
+            environment.update(self.billing.environment)
+            secrets.update(self.billing.secrets)
+        if self.admin_pool:
+            environment.update(
+                ADMIN_ISSUER=self.admin_pool.issuer,
+                ADMIN_CLIENT_ID=self.admin_pool.client.user_pool_client_id,
+                ADMIN_DOMAIN=self.admin_pool.domain_url,
+                ADMIN_EXTERNAL_URL=self.admin_pool.external_url,
+                ADMIN_ALLOWED_CIDRS=",".join(config.admin.allowed_cidrs),
+            )
+            secrets["ADMIN_CLIENT_SECRET"] = ecs.Secret.from_secrets_manager(
+                self.admin_pool.client_secret
+            )
 
         self.api = AppService(
             self,
@@ -143,12 +179,29 @@ class BackendStack(cdk.Stack):
             cpu=cfg.api_cpu,
             memory_mib=cfg.api_memory_mib,
             environment=environment,
-            secrets=self.postgres.secrets,
+            secrets=secrets,
             health_check=[
                 f"python -c \"import urllib.request as u; u.urlopen('http://127.0.0.1:{cfg.container_port}/api/health', timeout=3)\""
             ],
         )
         self.store.table.grant_read_write_data(self.api.task_definition.task_role)
+        self.exports.grant(self.api.task_definition.task_role)
+        if self.billing:
+            self.billing.grant(self.api.task_definition.task_role)
+        if self.mail:
+            self.mail.grant(self.api.task_definition.task_role)
+        # Account deletion: end sessions, disable and delete users of this pool only.
+        self.api.task_definition.task_role.add_to_principal_policy(
+            iam.PolicyStatement(
+                actions=[
+                    "cognito-idp:ListUsers",
+                    "cognito-idp:AdminUserGlobalSignOut",
+                    "cognito-idp:AdminDisableUser",
+                    "cognito-idp:AdminDeleteUser",
+                ],
+                resources=[self.auth.pool.user_pool_arn],
+            )
+        )
 
         self.alarms = Alarms(
             self,
@@ -164,6 +217,11 @@ class BackendStack(cdk.Stack):
         cdk.CfnOutput(self, "UserPoolId", value=self.auth.pool.user_pool_id)
         cdk.CfnOutput(self, "UserPoolIssuer", value=self.auth.issuer)
         cdk.CfnOutput(self, "UserPoolClientIds", value=self.auth.client_ids)
+        if self.admin_pool:
+            cdk.CfnOutput(self, "StaffPoolId", value=self.admin_pool.pool.user_pool_id)
+            cdk.CfnOutput(
+                self, "StaffConsoleUrl", value=f"{self.admin_pool.external_url}/api/admin/"
+            )
         cdk.CfnOutput(self, "DynamoTable", value=self.store.table.table_name)
         cdk.CfnOutput(self, "DataVolumeId", value=self.host.data_volume.volume_id)
         if self.postgres.backup_bucket:
@@ -227,10 +285,13 @@ class AppStage(cdk.Stage):
         self.edge.add_stack_dependency(self.backend)
 
         asg = cast(cdk.CfnElement, self.backend.host.asg.node.default_child)
-        bucket = self.backend.postgres.backup_bucket
-        bucket_id = (
-            self.backend.get_logical_id(cast(cdk.CfnElement, bucket.node.default_child))
-            if bucket
-            else None
-        )
-        acknowledge_known(self, config, self.backend.get_logical_id(asg), bucket_id)
+        bucket_ids = [
+            self.backend.get_logical_id(cast(cdk.CfnElement, b.node.default_child))
+            for b in (
+                self.backend.postgres.backup_bucket,
+                self.backend.exports.bucket,
+                self.backend.billing.invoices if self.backend.billing else None,
+            )
+            if b is not None
+        ]
+        acknowledge_known(self, config, self.backend.get_logical_id(asg), bucket_ids)

@@ -14,6 +14,9 @@ Use the **Essentials** tier. It includes managed login (hosted UI), passkeys, on
 - Email through Cognito's built-in sender (50 messages a day) until you set `auth.ses_from` to a verified SES address.
 - `AUTH_ISSUER` and `AUTH_CLIENT_IDS` are passed to the API container as environment variables.
 
+## Staff pool (admin console)
+A second pool, `<prefix>-staff`, is for your team only: admin-created users, TOTP required, groups `support`, `finance`, `superadmin`. It signs people in to the staff console at `/api/admin` with its own hosted-login domain and a confidential client whose secret is stored in Secrets Manager. See [accounts and admin](../modules/accounts-admin.md) for roles and how to create the first user. Set `admin.enabled = False` to leave it out, and `admin.allowed_cidrs` to restrict it to your network.
+
 ## Manual steps
 ### Google
 1. Google Cloud Console → create a project → OAuth consent screen (external).

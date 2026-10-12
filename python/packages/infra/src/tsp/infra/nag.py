@@ -6,6 +6,8 @@ An unacknowledged finding fails synth, so a new risky resource cannot slip in qu
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 import aws_cdk as cdk
 from cdk_nag import AwsSolutionsChecks
 from constructs import Construct
@@ -69,7 +71,7 @@ def acknowledge_known(
     scope: Construct,
     env: EnvConfig,
     asg_logical_id: str,
-    backup_bucket_logical_id: str | None = None,
+    bucket_logical_ids: Sequence[str] = (),
 ) -> None:
     rules = {k: v for k, v in _STATIC.items()}
     rules.update(_MANAGED)
@@ -80,10 +82,11 @@ def acknowledge_known(
     rules[
         f"IAM5[Resource::arn:<AWS::Partition>:autoscaling:{env.region}:{env.account}:autoScalingGroup:*:autoScalingGroupName/<{asg_logical_id}>]"
     ] = "CDK-managed ECS drain hook may complete lifecycle actions for this group."
-    if backup_bucket_logical_id:
-        rules[f"IAM5[Resource::<{backup_bucket_logical_id}.Arn>/*]"] = (
-            "pgBackRest reads and writes backup objects; limited to the backup bucket."
-        )
+    for bucket_id in bucket_logical_ids:
+        for suffix in ("/*", "/exports/*", "/invoices/*"):
+            rules[f"IAM5[Resource::<{bucket_id}.Arn>{suffix}]"] = (
+                "Object-level access to this environment's own bucket (backups or personal-data exports)."
+            )
     cdk.Validations.of(scope).acknowledge(
         *(cdk.Acknowledgment(id=_P + k, reason=v) for k, v in rules.items())
     )

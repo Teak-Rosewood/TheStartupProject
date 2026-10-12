@@ -1,0 +1,29 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "tsp-compliance"
+version = "0.1.0"
+description = "Consent records by document version, data export and deletion, legal document rendering."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+dependencies = [
+  "sqlalchemy[asyncio]>=2",
+  "fastapi>=0.110",
+  "aioboto3>=13",
+  "tomli>=2; python_version < '3.11'",
+  "tsp-db",
+  "tsp-audit",
+]
+
+[project.scripts]
+tsp-compliance = "tsp.compliance.cli:main"
+
+[tool.uv.sources]
+tsp-db = { workspace = true }
+tsp-audit = { workspace = true }
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/tsp"]

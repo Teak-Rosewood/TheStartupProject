@@ -6,7 +6,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from tsp.auth import Claims
 from tsp.cache import Cache
@@ -16,6 +16,17 @@ from tsp.server import current_user, db_session, get_cache, get_table
 from .models import Note
 
 router = APIRouter()
+# Routes that need accepted legal documents; main.py attaches the consent guard.
+gated = APIRouter()
+
+
+async def export_notes(session: AsyncSession, sub: str) -> list[dict[str, Any]]:
+    rows = (await session.scalars(select(Note).where(Note.owner == sub).order_by(Note.id))).all()
+    return [{"id": n.id, "text": n.text, "created_at": n.created_at} for n in rows]
+
+
+async def erase_notes(session: AsyncSession, sub: str) -> None:
+    await session.execute(delete(Note).where(Note.owner == sub))
 
 
 class NoteIn(BaseModel):
@@ -31,7 +42,7 @@ async def me(user: Claims = Depends(current_user)) -> dict[str, Any]:
     return {"sub": user.sub, "email": user.email, "groups": user.groups}
 
 
-@router.post("/notes", status_code=201)
+@gated.post("/notes", status_code=201)
 async def add_note(
     body: NoteIn, user: Claims = Depends(current_user), s: AsyncSession = Depends(db_session)
 ) -> dict[str, Any]:

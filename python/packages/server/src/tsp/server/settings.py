@@ -40,6 +40,9 @@ class Settings(BaseModel):
     dynamodb_endpoint: str | None = None
     aws_region: str | None = None
     auth_issuer: str | None = None
+    cognito_user_pool_id: str | None = None
+    export_bucket: str | None = None
+    legal_manifest: str | None = None
     auth_client_ids: list[str] = []
     cors_origins: list[str] = []
 
@@ -56,6 +59,9 @@ class Settings(BaseModel):
             dynamodb_endpoint=e.get("DYNAMODB_ENDPOINT") or None,
             aws_region=e.get("AWS_REGION") or e.get("AWS_DEFAULT_REGION") or None,
             auth_issuer=e.get("AUTH_ISSUER") or None,
+            cognito_user_pool_id=e.get("COGNITO_USER_POOL_ID") or None,
+            export_bucket=e.get("EXPORT_BUCKET") or None,
+            legal_manifest=e.get("TSP_LEGAL_MANIFEST") or None,
             auth_client_ids=_split(e.get("AUTH_CLIENT_IDS")),
             cors_origins=_split(e.get("CORS_ORIGINS")),
         )

@@ -177,3 +177,42 @@ def test_database_url_built_from_injected_parts():
         == "postgresql://x"
     )
     assert Settings.from_env({"DB_HOST": "h"}).database_url is None
+
+
+def test_structured_http_errors_keep_their_fields():
+    from fastapi import HTTPException
+
+    app = create_app(Settings())
+
+    @app.get("/api/gate")
+    async def gate():
+        raise HTTPException(
+            403,
+            detail={
+                "type": "consent_required",
+                "message": "accept",
+                "documents": [{"id": "terms"}],
+            },
+        )
+
+    with TestClient(app) as c:
+        r = c.get("/api/gate")
+        assert r.status_code == 403
+        assert r.json()["error"] == {
+            "type": "consent_required",
+            "message": "accept",
+            "documents": [{"id": "terms"}],
+        }
+
+
+def test_request_id_is_available_to_handlers():
+    from fastapi import Request
+
+    app = create_app(Settings())
+
+    @app.get("/api/rid")
+    async def rid(request: Request):
+        return {"rid": request.state.request_id}
+
+    with TestClient(app) as c:
+        assert c.get("/api/rid", headers={"x-request-id": "abc123"}).json() == {"rid": "abc123"}

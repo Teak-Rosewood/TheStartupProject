@@ -1,0 +1,18 @@
+---
+import { getCollection } from "astro:content";
+import Base from "../../layouts/Base.astro";
+import { site } from "../../config";
+
+const posts = (await getCollection("blog", (p) => !p.data.draft)).sort((a, b) => b.data.date.getTime() - a.data.date.getTime());
+---
+<Base title="Blog" description={`News, lessons and how-tos from the ${site.name} team. Written for people who care about the problem we work on.`}>
+  <div class="wrap prose-wrap">
+    <h1>Blog</h1>
+    <ul>
+      {posts.map((p) => (
+        <li style="margin:1rem 0"><a href={`/blog/${p.id}`}>{p.data.title}</a>
+          <div class="muted"><time datetime={p.data.date.toISOString()}>{p.data.date.toLocaleDateString("en-IN", { dateStyle: "long" })}</time> — {p.data.description}</div></li>
+      ))}
+    </ul>
+  </div>
+</Base>

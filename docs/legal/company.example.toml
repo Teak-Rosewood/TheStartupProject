@@ -1,0 +1,27 @@
+# Copy to company.toml. Every {{key}} used in the templates must appear here (make legal-check).
+company_name = "Acme"                        # brand, e.g. "Acme"
+company_legal_name = "Acme Technologies Private Limited"
+cin = "U00000KA2026PTC000000"                # Corporate Identity Number (India); remove if not applicable
+registered_address = "1 Example Street, Bengaluru, Karnataka 560001, India"
+product_name = "Acme"
+website_url = "https://app.example.com"
+support_email = "support@example.com"
+privacy_email = "privacy@example.com"
+security_email = "security@example.com"
+legal_email = "legal@example.com"
+grievance_officer_name = "Full Name"
+grievance_officer_email = "grievance@example.com"
+grievance_officer_address = "Same as registered address, or a designated address"
+grievance_response_days = "15"               # internal target; verify the period your applicable rules require
+dpo_email = "dpo@example.com"                # Data Protection Officer or privacy lead; EU/UK representative if required
+governing_law = "the laws of India"
+jurisdiction_city = "Bengaluru"
+effective_date = "1 January 2027"
+minimum_age = "18"
+refund_window_days = "7"
+refund_processing_days = "7"
+trial_days = "14"
+liability_cap_months = "12"
+breach_notice_hours = "48"
+data_region = "Mumbai, India (AWS ap-south-1)"
+log_retention_days = "180"

@@ -1,0 +1,21 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "tsp-jobs"
+version = "0.1.0"
+description = "Postgres-backed background jobs: transactional enqueue, retries, scheduled jobs."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+dependencies = ["sqlalchemy[asyncio]>=2", "tsp-db"]
+
+[project.scripts]
+tsp-jobs = "tsp.jobs.cli:main"
+
+[tool.uv.sources]
+tsp-db = { workspace = true }
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/tsp"]

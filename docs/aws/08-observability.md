@@ -3,6 +3,8 @@
 ## Logs
 Containers log to CloudWatch Logs with **14-day retention** by default (log storage is a surprise cost; raise it per log group only if needed). `tsp.server` writes one JSON object per line with a request ID, so Logs Insights queries work.
 
+**Retention for Indian production use.** Indian CERT-In directions expect security-relevant ICT logs to be kept for a rolling 180 days, inside India **(verify applicability to your business)**. 14 days is the cost-saving default for development; before production, raise the retention of the API, database and host log groups (or export them to an S3 bucket in `ap-south-1`, which is cheaper than long CloudWatch retention). The retention is made a config value in the compliance phase; see the [retention schedule](../legal/data-retention.md).
+
 ## Alarms (SNS email)
 | Alarm | Why |
 |---|---|

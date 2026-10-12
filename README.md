@@ -32,7 +32,7 @@ client = LLMClient.from_env(".env", catalog="~/.cache/tsp-ai/catalog.json")
 resp = await client.chat.create(model="auto", messages=[{"role": "user", "content": "Hello"}])
 ```
 
-More: [Getting started](docs/getting-started.md) · [Docs index](docs/README.md)
+More: [Getting started](docs/getting-started.md) · [Startup guide](docs/startup/README.md) · [Legal templates](docs/legal/README.md) · [Docs index](docs/README.md)
 
 ## Layout
 

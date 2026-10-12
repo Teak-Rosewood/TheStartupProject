@@ -8,6 +8,14 @@
 | `tsp-db` (`tsp.db`) | runtime | async SQLAlchemy engine and session, Alembic helper, `tsp-db migrate` |
 | `tsp-nosql` (`tsp.nosql`) | runtime | typed DynamoDB single-table helper |
 | `tsp-cache` (`tsp.cache`) | runtime | Valkey/Redis client, `@cached`, rate limiter, lock |
+| `tsp-accounts` (`tsp.accounts`) | runtime | users, organizations, roles, invites, customer API keys |
+| `tsp-admin` (`tsp.admin`) | runtime | staff console on `/api/admin` with its own MFA login |
+| `tsp-growth` (`tsp.growth`) | runtime | waitlist (double opt-in), first-party events, attribution, referrals, business metrics; see [growth](../modules/growth.md) |
+| `tsp-jobs` (`tsp.jobs`) | runtime | Postgres-backed background jobs and schedules |
+| `tsp-notify` (`tsp.notify`) | runtime | email (SES), push (FCM), SMS (SNS), in-app; see [jobs and notifications](../modules/jobs-notify.md) |
+| `tsp-payments` (`tsp.payments`) | runtime | Razorpay/Stripe, GST invoices, credits ledger, entitlements; see [payments](../modules/payments.md) |
+| `tsp-audit` (`tsp.audit`) | runtime | append-only audit log (database trigger) |
+| `tsp-compliance` (`tsp.compliance`) | runtime | consent by document version, data export and deletion, legal rendering; see [compliance](../modules/compliance.md) |
 | `tsp-ai` (`tsp.ai`) | runtime | multi-provider LLM client and server (already built) |
 
 Runtime modules take explicit URLs and parameters and know nothing about each other, so you can use any one alone. Only `tsp.server` reads environment settings and wires the others together. The deployable sample service lives in `python/apps/api`, and the CDK app in `python/apps/infra`.

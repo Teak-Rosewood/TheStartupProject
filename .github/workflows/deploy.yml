@@ -49,6 +49,27 @@ jobs:
         working-directory: python/apps/infra
         run: npx --yes aws-cdk@2 deploy 'prod/tsp-prod-oidc' 'prod/tsp-prod-registry' --require-approval never
 
+      - name: render legal documents (strict when a real company.toml exists)
+        working-directory: ${{ github.workspace }}
+        run: |
+          if [ -f docs/legal/company.toml ]; then
+            cd python && uv run tsp-compliance render-legal --config ../docs/legal/company.toml --src ../docs/legal --out apps/api/legal --strict
+          else
+            make legal-render
+          fi
+
+      - name: build the landing site (legal pages carry the same versions as the API)
+        working-directory: ${{ github.workspace }}
+        env:
+          SITE_URL: https://${{ vars.APP_DOMAIN }}
+          PUBLIC_CAPTCHA_SITE_KEY: ${{ vars.CAPTCHA_SITE_KEY }}
+          PUBLIC_CAPTCHA_PROVIDER: ${{ vars.CAPTCHA_PROVIDER }}
+          PUBLIC_SITE_NAME: ${{ vars.SITE_NAME }}
+        run: |
+          if [ -f js/packages/landing/package.json ]; then
+            (cd js && npm ci && npm run build -w @tsp/landing && npm run verify -w @tsp/landing)
+          fi
+
       - name: image tags
         run: |
           echo "API_TAG=${{ inputs.image_tag || github.sha }}" >> "$GITHUB_ENV"
@@ -87,7 +108,7 @@ jobs:
       - name: publish frontend (if FRONTEND_DIR is set and built)
         working-directory: ${{ github.workspace }}
         run: |
-          DIR="${{ vars.FRONTEND_DIR }}"
+          DIR="${{ vars.FRONTEND_DIR || 'js/packages/landing/dist' }}"
           if [ -n "$DIR" ] && [ -d "$DIR" ]; then
             aws s3 sync "$DIR" "s3://tsp-prod-frontend-${{ vars.AWS_ACCOUNT_ID }}" --delete \
               --cache-control "public,max-age=31536000,immutable" --exclude index.html

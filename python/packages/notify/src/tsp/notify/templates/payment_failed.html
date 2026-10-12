@@ -1,0 +1,2 @@
+{% extends "base.html" %}{% block subject %}Action needed: your {{ brand }} payment failed{% endblock %}
+{% block body %}<p>We could not charge your payment method for {{ description }}.</p><p>Please update it{% if billing_url %} <a href="{{ billing_url }}">on your billing page</a>{% endif %} to keep your plan. We will retry automatically.</p>{% endblock %}

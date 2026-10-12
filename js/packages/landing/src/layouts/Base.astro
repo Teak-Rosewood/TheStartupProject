@@ -1,0 +1,76 @@
+---
+import "../styles/global.css";
+import CookieBanner from "../components/CookieBanner.astro";
+import { nav, site } from "../config";
+
+interface Props {
+  title: string;
+  description?: string;
+  path?: string;
+  event?: string; // analytics event fired on load (default page_viewed)
+  jsonLd?: Record<string, unknown>;
+  noindex?: boolean;
+  type?: "website" | "article";
+}
+const { title, description = site.description, event, jsonLd, noindex = false, type = "website" } = Astro.props;
+const path = Astro.props.path ?? Astro.url.pathname;
+const canonical = new URL(path, site.url).toString().replace(/\/$/, "") || site.url;
+const fullTitle = title === site.name ? title : `${title} · ${site.name}`;
+const og = new URL(site.ogImage, site.url).toString();
+const legalLinks = [
+  ["terms", "Terms"], ["privacy", "Privacy"], ["cookies", "Cookies"], ["refund", "Refunds"], ["aup", "Acceptable use"],
+];
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{fullTitle}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <meta name="theme-color" content="#1f4fd8" />
+    {noindex && <meta name="robots" content="noindex,follow" />}
+    <meta property="og:site_name" content={site.name} />
+    <meta property="og:type" content={type} />
+    <meta property="og:title" content={fullTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={og} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={fullTitle} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={og} />
+    {jsonLd && <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />}
+  </head>
+  <body data-event={event}>
+    <a class="skip" href="#main">Skip to content</a>
+    <header class="site">
+      <div class="wrap">
+        <a class="brand" href="/">{site.name}</a>
+        <nav aria-label="Main">
+          <ul>
+            {nav.map((n) => <li><a href={n.href} aria-current={path === n.href ? "page" : undefined}>{n.label}</a></li>)}
+            {site.appUrl && <li><a href={site.appUrl}>Sign in</a></li>}
+          </ul>
+        </nav>
+      </div>
+    </header>
+    <main id="main"><slot /></main>
+    <footer class="site">
+      <div class="wrap">
+        <ul aria-label="Legal">
+          {legalLinks.map(([id, label]) => <li><a href={`/legal/${id}`}>{label}</a></li>)}
+          <li><button class="btn secondary" type="button" data-cookie-settings style="padding:.3rem .7rem">Cookie settings</button></li>
+        </ul>
+        <p>© {new Date().getFullYear()} {site.company}. {site.address}</p>
+        <p>Questions: <a href={`mailto:${site.supportEmail}`}>{site.supportEmail}</a></p>
+      </div>
+    </footer>
+    <CookieBanner />
+    <script>
+      import "../scripts/main";
+    </script>
+  </body>
+</html>

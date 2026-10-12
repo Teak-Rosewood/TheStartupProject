@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class DomainConfig(BaseModel):
@@ -58,6 +58,62 @@ class AuthConfig(BaseModel):
     ses_from: str | None = None
 
 
+class AdminConfig(BaseModel):
+    """Staff console (docs/aws/04-auth.md): its own Cognito pool with required MFA."""
+
+    enabled: bool = True
+    # Restrict the console to these networks (e.g. your office VPN). Empty = any address.
+    allowed_cidrs: list[str] = []
+
+
+class SellerConfig(BaseModel):
+    """Your company as it appears on GST invoices."""
+
+    legal_name: str
+    gstin: str
+    address: str
+    state_code: str = Field(pattern=r"^\d{2}$")
+    sac: str
+    gst_rate: float = 18
+    lut: bool = True  # Letter of Undertaking filed, so exports are zero-rated
+
+
+class PaymentsConfig(BaseModel):
+    """Gateways to enable. Credentials live in Secrets Manager (docs/aws/14-payments.md), never here."""
+
+    razorpay: bool = False
+    stripe: bool = False
+    seller: SellerConfig | None = None
+
+
+class NotifyConfig(BaseModel):
+    """Email through Amazon SES. DNS records are added at your registrar (docs/aws/15-email.md)."""
+
+    enabled: bool = False
+    domain: str = ""  # sending domain, e.g. example.com
+    from_address: str = ""  # e.g. no-reply@example.com (must be on the domain)
+    brand: str = "Your product"
+    footer: str = ""  # postal address / company line shown in email footers
+
+    @model_validator(mode="after")
+    def _check(self) -> NotifyConfig:
+        if self.enabled and not (self.domain and self.from_address.endswith("@" + self.domain)):
+            raise ValueError("notify needs a domain and a from_address on that domain")
+        return self
+
+
+class GrowthConfig(BaseModel):
+    """Bot protection for public forms. The site key is public; the secret lives in Secrets Manager."""
+
+    captcha: Literal["none", "turnstile", "hcaptcha"] = "none"
+
+
+class EdgeConfig(BaseModel):
+    """Browser security policy for the site (not the API). None uses the strict default in edge.py."""
+
+    csp: str | None = None
+
+
 class GithubConfig(BaseModel):
     owner: str
     repo: str
@@ -77,6 +133,11 @@ class EnvConfig(BaseModel):
     database: DatabaseConfig = DatabaseConfig()
     cache: CacheConfig = CacheConfig()
     auth: AuthConfig = AuthConfig()
+    admin: AdminConfig = AdminConfig()
+    payments: PaymentsConfig = PaymentsConfig()
+    notify: NotifyConfig = NotifyConfig()
+    growth: GrowthConfig = GrowthConfig()
+    edge: EdgeConfig = EdgeConfig()
     github: GithubConfig
     alarm_email: str
     budget_usd: float = Field(default=50, gt=0)
@@ -86,6 +147,19 @@ class EnvConfig(BaseModel):
     # Sent by CloudFront and required by the app: defense in depth beside the prefix-list SG.
     origin_verify_secret: str = Field(min_length=24, repr=False)
     cloudfront_price_class: Literal["100", "200", "All"] = "200"
+    # CloudWatch log retention. 14 days is the cheap default; Indian CERT-In directions expect
+    # security-relevant logs for a rolling 180 days (docs/aws/08-observability.md, verify).
+    log_retention_days: int = 14
+
+    @field_validator("log_retention_days")
+    @classmethod
+    def _retention(cls, v: int) -> int:
+        from .compute import _RETENTION
+
+        allowed = set(_RETENTION)
+        if v not in allowed:
+            raise ValueError(f"log_retention_days must be one of {sorted(allowed)}")
+        return v
 
     @field_validator("alarm_email")
     @classmethod

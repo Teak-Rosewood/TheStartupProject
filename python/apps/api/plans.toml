@@ -1,0 +1,21 @@
+# Your plans, in code. Synced into the database on every start; plans removed from this file are
+# deactivated (existing subscribers keep theirs). Amounts are in paise and include GST.
+# Create the matching plan in the Razorpay dashboard (Subscriptions > Plans) and paste its id below.
+
+[[plan]]
+code = "pro_monthly"
+name = "Pro (monthly)"
+kind = "subscription"
+amount = 99900
+currency = "INR"
+interval = "month"
+provider_plan_id = "plan_REPLACE_ME"
+features = { seats = 10, exports = true }
+
+[[plan]]
+code = "credits_1000"
+name = "1,000 credits"
+kind = "credit_pack"
+amount = 49900
+currency = "INR"
+credits = 1000

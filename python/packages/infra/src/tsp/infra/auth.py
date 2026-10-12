@@ -6,6 +6,7 @@ import aws_cdk as cdk
 import aws_cdk.aws_certificatemanager as acm
 import aws_cdk.aws_cloudfront as cloudfront  # noqa: F401  (kept for type reference in docs)
 import aws_cdk.aws_cognito as cognito
+import aws_cdk.aws_secretsmanager as secretsmanager
 from constructs import Construct
 
 from .config import EnvConfig
@@ -161,3 +162,103 @@ class UserPool(Construct):
 
         self.issuer = f"https://cognito-idp.{region}.amazonaws.com/{self.pool.user_pool_id}"
         self.client_ids = f"{self.web.user_pool_client_id},{self.mobile.user_pool_client_id}"
+
+
+STAFF_GROUPS = {
+    "support": "Read customer records; disable accounts; sign users out",
+    "finance": "Read customer and billing records",
+    "superadmin": "Everything, including executing account deletions",
+}
+
+
+class AdminPool(Construct):
+    """Staff identity: a separate pool so customers can never hold a staff role.
+
+    Admin-created users only, TOTP required, short sessions. The API's console signs in through
+    this pool with a confidential client (secret in Secrets Manager, never in the browser).
+    """
+
+    def __init__(self, scope: Construct, id: str, *, config: EnvConfig) -> None:
+        super().__init__(scope, id)
+        region = cdk.Stack.of(self).region
+        app_url = f"https://{config.domain.app}"
+        domain_prefix = f"{config.prefix}-{config.account}-staff"
+
+        self.pool = cognito.UserPool(
+            self,
+            "Pool",
+            user_pool_name=f"{config.prefix}-staff",
+            feature_plan=cognito.FeaturePlan.ESSENTIALS,
+            self_sign_up_enabled=False,
+            sign_in_aliases=cognito.SignInAliases(email=True),
+            auto_verify=cognito.AutoVerifiedAttrs(email=True),
+            standard_attributes=cognito.StandardAttributes(
+                email=cognito.StandardAttribute(required=True, mutable=False)
+            ),
+            password_policy=cognito.PasswordPolicy(
+                min_length=14,
+                require_lowercase=True,
+                require_uppercase=True,
+                require_digits=True,
+                require_symbols=True,
+                temp_password_validity=cdk.Duration.days(3),
+            ),
+            account_recovery=cognito.AccountRecovery.NONE,  # an administrator resets staff access
+            sign_in_policy=cognito.SignInPolicy(
+                allowed_first_auth_factors=cognito.AllowedFirstAuthFactors(password=True)
+            ),
+            mfa=cognito.Mfa.REQUIRED,
+            mfa_second_factor=cognito.MfaSecondFactor(otp=True, sms=False, email=False),
+            deletion_protection=True,
+            removal_policy=cdk.RemovalPolicy.RETAIN,
+        )
+        for name, description in STAFF_GROUPS.items():
+            cognito.CfnUserPoolGroup(
+                self,
+                f"Group{name.title()}",
+                user_pool_id=self.pool.user_pool_id,
+                group_name=name,
+                description=description,
+            )
+
+        callback = f"{app_url}/api/admin/oidc/callback"
+        self.client = self.pool.add_client(
+            "Console",
+            user_pool_client_name=f"{config.prefix}-staff-console",
+            generate_secret=True,
+            o_auth=cognito.OAuthSettings(
+                flows=cognito.OAuthFlows(authorization_code_grant=True),
+                scopes=[cognito.OAuthScope.OPENID, cognito.OAuthScope.EMAIL],
+                callback_urls=[callback],
+                logout_urls=[f"{app_url}/api/admin/"],
+            ),
+            supported_identity_providers=[cognito.UserPoolClientIdentityProvider.COGNITO],
+            prevent_user_existence_errors=True,
+            access_token_validity=cdk.Duration.hours(1),
+            id_token_validity=cdk.Duration.hours(1),
+            refresh_token_validity=cdk.Duration.hours(8),
+            enable_token_revocation=True,
+        )
+        self.domain = self.pool.add_domain(
+            "Domain",
+            cognito_domain=cognito.CognitoDomainOptions(domain_prefix=domain_prefix),
+            managed_login_version=cognito.ManagedLoginVersion.NEWER_MANAGED_LOGIN,
+        )
+        cognito.CfnManagedLoginBranding(
+            self,
+            "Branding",
+            user_pool_id=self.pool.user_pool_id,
+            client_id=self.client.user_pool_client_id,
+            use_cognito_provided_values=True,
+        ).node.add_dependency(self.domain)
+
+        self.client_secret = secretsmanager.Secret(
+            self,
+            "ClientSecret",
+            description=f"{config.prefix} staff console OAuth client secret",
+            secret_string_value=self.client.user_pool_client_secret,
+            removal_policy=cdk.RemovalPolicy.RETAIN,
+        )
+        self.issuer = f"https://cognito-idp.{region}.amazonaws.com/{self.pool.user_pool_id}"
+        self.domain_url = f"https://{domain_prefix}.auth.{region}.amazoncognito.com"
+        self.external_url = app_url

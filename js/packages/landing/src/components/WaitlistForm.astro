@@ -1,0 +1,22 @@
+---
+import { site } from "../config";
+interface Props { source?: string; }
+const { source = "hero" } = Astro.props;
+const id = `waitlist-${source}`;
+---
+<form class="waitlist" data-source={source} method="post" action="/api/leads" aria-labelledby={`${id}-title`}>
+  <p id={`${id}-title`} class="muted" style="margin:0">Join the waitlist. We will email you once at launch.</p>
+  <div>
+    <label for={`${id}-email`}>Email address</label>
+    <input id={`${id}-email`} name="email" type="email" required autocomplete="email" inputmode="email" maxlength="254" />
+  </div>
+  <div class="hp" aria-hidden="true"><label>Leave this empty <input name="website" tabindex="-1" autocomplete="off" /></label></div>
+  <label class="check"><input type="checkbox" name="consent" required />
+    <span>I agree to receive launch updates and product news by email, and I can unsubscribe at any time. See the <a href="/legal/privacy">privacy policy</a>.</span></label>
+  {site.captchaSiteKey && site.captchaProvider === "turnstile" && <div class="cf-turnstile" data-sitekey={site.captchaSiteKey}></div>}
+  {site.captchaSiteKey && site.captchaProvider === "hcaptcha" && <div class="h-captcha" data-sitekey={site.captchaSiteKey}></div>}
+  <button class="btn" type="submit" data-track="waitlist">Join the waitlist</button>
+  <div role="status" aria-live="polite"></div>
+</form>
+{site.captchaSiteKey && site.captchaProvider === "turnstile" && <script is:inline src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>}
+{site.captchaSiteKey && site.captchaProvider === "hcaptcha" && <script is:inline src="https://js.hcaptcha.com/1/api.js" async defer></script>}

@@ -1,0 +1,23 @@
+{% extends "sqladmin/layout.html" %}
+{% block content %}
+<div class="col-12">
+  <div class="card"><div class="card-header"><h3 class="card-title">Business metrics</h3></div>
+  <div class="card-body">
+    <div class="row g-3">
+      {% for label, value in cards %}
+      <div class="col-6 col-md-3"><div class="card"><div class="card-body"><div class="text-secondary">{{ label }}</div><div class="h2">{{ value }}</div></div></div></div>
+      {% endfor %}
+    </div>
+    <h4 class="mt-4">Sign-ups, last 30 days</h4>
+    <table class="table table-sm"><thead><tr><th>Day</th><th>Sign-ups</th></tr></thead><tbody>
+    {% for day, n in signups %}<tr><td>{{ day }}</td><td>{{ n }}</td></tr>{% endfor %}
+    </tbody></table>
+    <h4 class="mt-4">Top events, last 7 days</h4>
+    <table class="table table-sm"><thead><tr><th>Event</th><th>Count</th><th>People</th></tr></thead><tbody>
+    {% for name, n, people in events %}<tr><td>{{ name }}</td><td>{{ n }}</td><td>{{ people }}</td></tr>
+    {% else %}<tr><td colspan="3">No events yet</td></tr>{% endfor %}
+    </tbody></table>
+    <p class="text-secondary">Revenue figures are tax-inclusive amounts from captured payments. MRR counts active subscriptions only (yearly plans divided by 12).</p>
+  </div></div>
+</div>
+{% endblock %}

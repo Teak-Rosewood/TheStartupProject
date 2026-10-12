@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import asyncio
+import importlib
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
@@ -18,12 +20,34 @@ from .engine import normalize_url
 ADVISORY_LOCK_KEY = 727274
 
 
-def upgrade(url: str, script_location: str | Path, revision: str = "head") -> None:
-    """Apply migrations. Called by ``tsp-db migrate`` (the CI one-off task)."""
+def migration_dirs(modules: Sequence[str]) -> list[Path]:
+    """Version folders of installed modules. Each module exposes ``migrations_path()``."""
+    return [Path(importlib.import_module(m).migrations_path()) for m in modules]
+
+
+def upgrade(
+    url: str,
+    script_location: str | Path,
+    revision: str | None = None,
+    *,
+    modules: Sequence[str] = (),
+) -> None:
+    """Apply migrations: the app's own plus those of ``modules`` (e.g. ``["tsp.audit"]``).
+
+    Every module keeps its migrations on its own Alembic branch, so ``heads`` are upgraded together.
+    Called by ``tsp-db migrate`` and by the API on start.
+    """
     cfg = Config()
     cfg.set_main_option("script_location", str(script_location))
+    extra = migration_dirs(modules)
+    if extra:
+        cfg.set_main_option("path_separator", ";")
+        cfg.set_main_option(
+            "version_locations",
+            ";".join([str(Path(script_location) / "versions"), *map(str, extra)]),
+        )
     cfg.set_main_option("sqlalchemy.url", normalize_url(url).replace("%", "%%"))
-    command.upgrade(cfg, revision)
+    command.upgrade(cfg, revision or ("heads" if extra else "head"))
 
 
 def run_alembic_env(target_metadata: Any = None) -> None:

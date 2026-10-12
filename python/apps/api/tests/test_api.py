@@ -5,12 +5,13 @@ from pathlib import Path
 
 import aioboto3
 import pytest
+from api_support import ALL_TABLES
 from fastapi.testclient import TestClient
 from sqlalchemy import text
 from tsp.auth import Claims
 from tsp.db import Database, upgrade
 from tsp.server import Settings, create_app, current_user
-from tsp_api.routes import router
+from tsp_api.routes import gated, router
 
 DB = os.environ.get("TSP_TEST_DATABASE_URL", "postgresql://postgres:test@127.0.0.1:55432/test")
 CACHE = os.environ.get("TSP_TEST_CACHE_URL", "redis://127.0.0.1:56379/0")
@@ -31,7 +32,7 @@ def client(monkeypatch):
         except Exception:
             pytest.skip("local services not running (docker compose up -d)")
         async with db.session() as s:
-            await s.execute(text("DROP TABLE IF EXISTS notes, alembic_version"))
+            await s.execute(text(f"DROP TABLE IF EXISTS {ALL_TABLES} CASCADE"))
         await db.dispose()
         await asyncio.to_thread(upgrade, DB, MIGRATIONS)
         async with aioboto3.Session().client(
@@ -61,6 +62,7 @@ def client(monkeypatch):
         )
     )
     app.include_router(router, prefix="/api")
+    app.include_router(gated, prefix="/api")
     user = {"sub": "u1"}
     app.dependency_overrides[current_user] = lambda: Claims(
         sub=user["sub"], token_use="access", email="a@b.c"

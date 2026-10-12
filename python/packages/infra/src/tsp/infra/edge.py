@@ -17,17 +17,39 @@ _PRICE_CLASS = {
     "All": cloudfront.PriceClass.PRICE_CLASS_ALL,
 }
 
-# Unknown extensionless paths serve the single-page app shell. /api is never rewritten.
+# Static pages live at /<name>/index.html (Astro `format: directory`), so /pricing is rewritten to
+# /pricing/index.html. The single-page web app under /app falls back to /app/index.html for client-side
+# routes. /api is never rewritten. (S3 answers a missing key with an XML error: a friendly 404 page would
+# need a CloudFront custom error response, which would also mask real 403/404 answers from the API.)
 _SPA_REWRITE = """
 function handler(event) {
   var request = event.request;
   var uri = request.uri;
-  if (uri.indexOf('/api/') !== 0 && uri.indexOf('.') === -1) {
-    request.uri = '/index.html';
-  }
+  if (uri.indexOf('/api/') === 0 || uri.indexOf('.') !== -1) { return request; }
+  if (uri === '/app' || uri.indexOf('/app/') === 0) { request.uri = '/app/index.html'; return request; }
+  request.uri = uri.replace(/\/$/, '') + '/index.html';
   return request;
 }
 """.strip()
+
+
+# Applied to the site (not /api): the console and API pages have their own needs. Razorpay Checkout,
+# Cloudflare Turnstile and hCaptcha are allowed because the kit's pages use them; remove what you do not.
+DEFAULT_CSP = "; ".join(
+    [
+        "default-src 'self'",
+        "script-src 'self' https://checkout.razorpay.com https://challenges.cloudflare.com https://js.hcaptcha.com",
+        "frame-src https://api.razorpay.com https://checkout.razorpay.com https://challenges.cloudflare.com https://newassets.hcaptcha.com",
+        "connect-src 'self' https://api.razorpay.com https://lumberjack.razorpay.com",
+        "img-src 'self' data: https:",
+        "style-src 'self' 'unsafe-inline'",
+        "font-src 'self' data:",
+        "base-uri 'self'",
+        "form-action 'self'",
+        "frame-ancestors 'none'",
+        "object-src 'none'",
+    ]
+)
 
 
 def frontend_bucket_name(env: EnvConfig) -> str:
@@ -74,6 +96,37 @@ class Site(Construct):
             read_timeout=cdk.Duration.seconds(60),  # streaming LLM replies need headroom
         )
 
+        headers = cloudfront.ResponseHeadersPolicy(
+            self,
+            "Headers",
+            security_headers_behavior=cloudfront.ResponseSecurityHeadersBehavior(
+                content_security_policy=cloudfront.ResponseHeadersContentSecurityPolicy(
+                    content_security_policy=env.edge.csp or DEFAULT_CSP, override=True
+                ),
+                content_type_options=cloudfront.ResponseHeadersContentTypeOptions(override=True),
+                frame_options=cloudfront.ResponseHeadersFrameOptions(
+                    frame_option=cloudfront.HeadersFrameOption.DENY, override=True
+                ),
+                referrer_policy=cloudfront.ResponseHeadersReferrerPolicy(
+                    referrer_policy=cloudfront.HeadersReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN,
+                    override=True,
+                ),
+                strict_transport_security=cloudfront.ResponseHeadersStrictTransportSecurity(
+                    access_control_max_age=cdk.Duration.days(365),
+                    include_subdomains=True,
+                    override=True,
+                ),
+            ),
+            custom_headers_behavior=cloudfront.ResponseCustomHeadersBehavior(
+                custom_headers=[
+                    cloudfront.ResponseCustomHeader(
+                        header="Permissions-Policy",
+                        value="camera=(), microphone=(), geolocation=(), payment=(self)",
+                        override=True,
+                    )
+                ]
+            ),
+        )
         self.distribution = cloudfront.Distribution(
             self,
             "Cdn",
@@ -87,7 +140,7 @@ class Site(Construct):
                 origin=origins.S3BucketOrigin.with_origin_access_control(self.bucket),
                 viewer_protocol_policy=cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
                 cache_policy=cloudfront.CachePolicy.CACHING_OPTIMIZED,
-                response_headers_policy=cloudfront.ResponseHeadersPolicy.SECURITY_HEADERS,
+                response_headers_policy=headers,
                 function_associations=[
                     cloudfront.FunctionAssociation(
                         function=spa_rewrite, event_type=cloudfront.FunctionEventType.VIEWER_REQUEST

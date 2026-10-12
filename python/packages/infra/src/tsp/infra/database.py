@@ -175,7 +175,9 @@ class Postgres(Construct):
                 "TSP_METRIC_DIMENSION": config.name,
                 "AWS_DEFAULT_REGION": region,
             },
-            logging=ecs.LogDrivers.aws_logs(stream_prefix="backup"),
+            logging=ecs.LogDrivers.aws_logs(
+                stream_prefix="backup", log_retention=host.log_retention
+            ),
         )
         for i, (_, container_path) in enumerate(volumes):
             backup.add_mount_points(

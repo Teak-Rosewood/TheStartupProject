@@ -1,0 +1,5 @@
+# Replace with your GitHub handles when you fork. Enable "Require review from Code Owners" on main.
+*                      @your-github-handle
+/python/packages/infra/ @your-github-handle
+/.github/              @your-github-handle
+/docs/legal/           @your-github-handle

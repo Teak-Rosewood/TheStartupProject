@@ -1,0 +1,2 @@
+{% extends "base.html" %}{% block subject %}Receipt {{ invoice_number }} from {{ brand }}{% endblock %}
+{% block body %}<p>Thank you. We received your payment of <b>{{ amount }}</b> for {{ description }}.</p><p>Your tax invoice <b>{{ invoice_number }}</b> is available in your billing page{% if invoice_url %}: <a href="{{ invoice_url }}">download it</a> (link valid for a short time){% endif %}.</p>{% endblock %}

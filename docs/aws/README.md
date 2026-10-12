@@ -78,6 +78,8 @@ What gets more expensive as you grow, and when: a second host plus ALB (+$20–4
 | [11 Multi-env](11-multi-env.md) | adding dev |
 | [12 Runbooks](12-runbooks.md) | rollback, host replacement, restore, rotation |
 | [13 Library modules](13-library-modules.md) | which `tsp.*` package does what |
+| [14 Payments setup](14-payments.md) | gateway secrets, seller details, webhook URL |
+| [15 Email setup](15-email.md) | SES domain, DNS records, production access |
 
 ## Accepted stage-0 trade-offs
 

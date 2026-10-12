@@ -1,0 +1,2 @@
+{% extends "base.html" %}{% block subject %}Welcome to {{ brand }}{% endblock %}
+{% block body %}<p>Hi{% if name %} {{ name }}{% endif %},</p><p>Your account is ready. {% if cta_url %}<a href="{{ cta_url }}">Get started</a>.{% endif %}</p><p>Reply to this email if you need a hand.</p>{% endblock %}

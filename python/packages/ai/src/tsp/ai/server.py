@@ -126,3 +126,10 @@ async def _sse(
     except ProviderHttpError as e:
         yield _frame(_error_body(str(e), "upstream_error"))
     yield "data: [DONE]\n\n"
+
+
+# Public names for hosts that build their own routes (auth, metering) around the same streaming format.
+sse_stream = _sse
+http_status = _http_status
+error_body = _error_body
+sse_frame = _frame

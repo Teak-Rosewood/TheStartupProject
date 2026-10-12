@@ -1,0 +1,2 @@
+{% extends "base.html" %}{% block subject %}{{ inviter }} invited you to {{ org }} on {{ brand }}{% endblock %}
+{% block body %}<p>{{ inviter }} invited you to join <b>{{ org }}</b>.</p><p><a href="{{ accept_url }}">Accept the invitation</a></p><p>The link works once and expires in {{ days }} days. If you were not expecting this, ignore this email.</p>{% endblock %}

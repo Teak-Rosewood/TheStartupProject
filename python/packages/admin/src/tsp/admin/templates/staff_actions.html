@@ -1,0 +1,32 @@
+{% extends "sqladmin/layout.html" %}
+{% block content %}
+<div class="col-12">
+  <div class="card">
+    <div class="card-header"><h3 class="card-title">Staff actions</h3></div>
+    <div class="card-body">
+      {% if message %}<div class="alert alert-{{ 'success' if ok else 'danger' }}">{{ message }}</div>{% endif %}
+      <p>Every action needs a reason (at least 10 characters) and is written to the audit log with your name.
+         You are signed in as <b>{{ staff.email or staff.sub }}</b> ({{ staff.role }}).</p>
+      <form method="post" class="row g-2">
+        <input type="hidden" name="csrf" value="{{ staff.csrf }}">
+        <div class="col-md-4"><label class="form-label">Target (user id, or payment id for refunds)</label>
+          <input class="form-control" name="target" required maxlength="40" placeholder="Cognito sub / payment id"></div>
+        <div class="col-md-3"><label class="form-label">Action</label>
+          <select class="form-select" name="action" required>
+            {% for a in actions %}<option value="{{ a }}">{{ a.replace('_', ' ') }}</option>{% endfor %}
+          </select></div>
+        <div class="col-md-2"><label class="form-label">Amount (refunds; paise, optional)</label>
+          <input class="form-control" name="amount" inputmode="numeric" pattern="[0-9]*"></div>
+        <div class="col-md-3"><label class="form-label">Reason</label>
+          <input class="form-control" name="reason" required minlength="10" maxlength="500" placeholder="Why, with a ticket reference"></div>
+        <div class="col-12"><button class="btn btn-primary" type="submit">Run action</button></div>
+      </form>
+      <h4 class="mt-4">Pending account deletions</h4>
+      <table class="table"><thead><tr><th>User</th><th>Requested</th><th>Scheduled</th></tr></thead><tbody>
+      {% for r in pending %}<tr><td>{{ r.user_sub }}</td><td>{{ r.requested_at }}</td><td>{{ r.scheduled_for }}</td></tr>
+      {% else %}<tr><td colspan="3">None</td></tr>{% endfor %}
+      </tbody></table>
+    </div>
+  </div>
+</div>
+{% endblock %}

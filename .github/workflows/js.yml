@@ -1,0 +1,35 @@
+name: js
+on:
+  push:
+    paths: ["js/**", "docs/legal/**", "python/apps/api/plans.toml", ".github/workflows/js.yml"]
+  pull_request:
+    paths: ["js/**", "docs/legal/**", "python/apps/api/plans.toml", ".github/workflows/js.yml"]
+
+jobs:
+  landing:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: js/package-lock.json
+      - name: render the legal documents the site publishes
+        run: make legal-render
+      - run: npm ci
+        working-directory: js
+      - name: build
+        run: npm run build -w @tsp/landing
+        working-directory: js
+        env:
+          SITE_URL: https://app.example.com
+      - name: verify the build (SEO, CSP, privacy, legal versions, links)
+        run: npm run verify -w @tsp/landing && npm test -w @tsp/landing
+        working-directory: js
+        env:
+          SITE_URL: https://app.example.com
+      - name: Lighthouse (performance, accessibility, best practices, SEO)
+        run: npx --yes @lhci/cli@0.14.0 autorun
+        working-directory: js/packages/landing

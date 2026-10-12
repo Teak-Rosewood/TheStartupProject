@@ -1,0 +1,40 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "tsp-admin"
+version = "0.1.0"
+description = "Staff console: separate MFA login, role-based views, audited actions."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+dependencies = [
+  "sqladmin>=0.20",
+  "itsdangerous>=2",
+  "httpx>=0.24",
+  "sqlalchemy[asyncio]>=2",
+  "tsp-auth",
+  "tsp-db",
+  "tsp-audit",
+  "tsp-accounts",
+  "tsp-compliance",
+  "tsp-payments",
+  "tsp-growth",
+  "tsp-flags",
+  "tsp-metering",
+]
+
+[tool.uv.sources]
+tsp-auth = { workspace = true }
+tsp-db = { workspace = true }
+tsp-audit = { workspace = true }
+tsp-accounts = { workspace = true }
+tsp-compliance = { workspace = true }
+tsp-payments = { workspace = true }
+tsp-growth = { workspace = true }
+tsp-flags = { workspace = true }
+tsp-metering = { workspace = true }
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/tsp"]
