@@ -61,6 +61,10 @@ class ObjectStore(Protocol):
         self, key: str
     ) -> bytes: ...  # whole object; for server-side processing of uploads
 
+    async def write(
+        self, key: str, data: bytes, content_type: str = "application/octet-stream"
+    ) -> None: ...  # objects the server makes itself (share cards, generated images)
+
 
 class S3ObjectStore:
     def __init__(self, bucket: str, region: str | None = None):
@@ -122,6 +126,12 @@ class S3ObjectStore:
             r = await s3.get_object(Bucket=self.bucket, Key=key)
             return bytes(await r["Body"].read())
 
+    async def write(
+        self, key: str, data: bytes, content_type: str = "application/octet-stream"
+    ) -> None:
+        async with self._client() as s3:
+            await s3.put_object(Bucket=self.bucket, Key=key, Body=data, ContentType=content_type)
+
 
 class LocalObjectStore:
     """For tests and development: presigned 'posts' are plain dicts and objects are files in a directory."""
@@ -150,6 +160,11 @@ class LocalObjectStore:
 
     async def get(self, key: str) -> bytes:
         return (self.dir / key).read_bytes()
+
+    async def write(
+        self, key: str, data: bytes, content_type: str = "application/octet-stream"
+    ) -> None:
+        self.put(key, data)
 
     def put(
         self, key: str, data: bytes

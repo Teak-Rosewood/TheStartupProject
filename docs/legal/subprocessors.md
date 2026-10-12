@@ -14,6 +14,7 @@
 | FCM / APNs (optional) | push notifications | device token, message content | global |
 | SMS provider (optional) | one-time codes and alerts | phone number, message content | India |
 | Embedding providers (the same AI providers, when you index documents with `tsp.vector`) | turn document passages and search queries into vectors | the text of documents users add and their search queries | provider-dependent |
+| Image generation provider (if you use `tsp.distribute` illustrations) | generate illustrations from your prompts | prompt text | provider-dependent |
 | **AI model providers** (OpenAI, Anthropic, Google, Groq, and any others you enable in `tsp.ai`) | generate AI outputs | prompts and content you send | provider-dependent, usually the US |
 
 > **AI providers need care.** Many free tiers of AI APIs state that prompts may be retained or used to improve their models. Before sending customer content to any provider, read its current terms. Either use only providers whose terms exclude training on API data and offer zero retention, or restrict free-tier providers to non-customer data, and say here which providers see customer content.

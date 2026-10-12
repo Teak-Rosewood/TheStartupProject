@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Awaitable, Callable
 from typing import Any
 
+from .lang import detect_lang
 from .store import Hit
 
 RRF_K = 60
@@ -40,7 +41,11 @@ async def hybrid_search(
     n = k * candidates
     rankings = [await store.query(org_id, collection_id, vector, n, filter, model)]
     if hasattr(store, "text_query") and query.strip():
-        rankings.append(await store.text_query(org_id, collection_id, query, n, filter, model))
+        rankings.append(
+            await store.text_query(
+                org_id, collection_id, query, n, filter, model, detect_lang(query)
+            )
+        )
     hits = rrf(rankings)[: max(k, n // 2) if rerank else k]
     if rerank:
         hits = (await rerank(query, hits))[:k]

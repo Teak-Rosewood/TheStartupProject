@@ -8,6 +8,7 @@ from .compliance import register_with_compliance
 from .config import VectorConfig
 from .extract import UnsupportedDocument, extract
 from .jobs import register_jobs
+from .lang import detect_lang, normalize_devanagari
 from .models import Collection, Document
 from .pg import PgVectorStore
 from .s3 import S3VectorStore
@@ -47,7 +48,9 @@ __all__ = [
     "chunk_id",
     "estimate_tokens",
     "extract",
+    "detect_lang",
     "hybrid_search",
+    "normalize_devanagari",
     "migrations_path",
     "register_jobs",
     "register_with_compliance",

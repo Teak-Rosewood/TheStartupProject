@@ -36,9 +36,11 @@ members = [
     "tsp-compliance",
     "tsp-crawl",
     "tsp-db",
+    "tsp-distribute",
     "tsp-flags",
     "tsp-graph",
     "tsp-growth",
+    "tsp-i18n",
     "tsp-infra",
     "tsp-infra-app",
     "tsp-jobs",
@@ -7958,6 +7960,38 @@ requires-dist = [
 ]
 
 [[package]]
+name = "tsp-distribute"
+version = "0.1.0"
+source = { editable = "packages/distribute" }
+dependencies = [
+    { name = "fastapi" },
+    { name = "httpx" },
+    { name = "jinja2" },
+    { name = "pillow" },
+    { name = "tsp-i18n" },
+    { name = "tsp-notify" },
+    { name = "tsp-storage" },
+]
+
+[package.optional-dependencies]
+test = [
+    { name = "jsonschema" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastapi", specifier = ">=0.110" },
+    { name = "httpx", specifier = ">=0.24" },
+    { name = "jinja2", specifier = ">=3" },
+    { name = "jsonschema", marker = "extra == 'test'", specifier = ">=4" },
+    { name = "pillow", specifier = ">=10" },
+    { name = "tsp-i18n", editable = "packages/i18n" },
+    { name = "tsp-notify", editable = "packages/notify" },
+    { name = "tsp-storage", editable = "packages/storage" },
+]
+provides-extras = ["test"]
+
+[[package]]
 name = "tsp-flags"
 version = "0.1.0"
 source = { editable = "packages/flags" }
@@ -8017,6 +8051,21 @@ requires-dist = [
     { name = "tsp-audit", editable = "packages/audit" },
     { name = "tsp-cache", editable = "packages/cache" },
     { name = "tsp-db", editable = "packages/db" },
+]
+
+[[package]]
+name = "tsp-i18n"
+version = "0.1.0"
+source = { editable = "packages/i18n" }
+dependencies = [
+    { name = "babel" },
+    { name = "fastapi" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "babel", specifier = ">=2.12" },
+    { name = "fastapi", specifier = ">=0.110" },
 ]
 
 [[package]]

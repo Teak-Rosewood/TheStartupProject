@@ -22,6 +22,9 @@ async def db(tmp_path):
         await s.execute(text("ALTER TABLE IF EXISTS audit_log DISABLE TRIGGER USER"))
         await s.execute(text(f"DROP TABLE IF EXISTS {TABLES} CASCADE"))
         await s.execute(text("DROP FUNCTION IF EXISTS tsp_audit_log_immutable() CASCADE"))
+        await s.execute(
+            text("DROP FUNCTION IF EXISTS tsp_tsv(text, text), tsp_norm_devanagari(text)")
+        )
     app = tmp_path / "migrations"
     (app / "versions").mkdir(parents=True)
     (app / "env.py").write_text("from tsp.db import run_alembic_env\nrun_alembic_env(None)\n")
@@ -36,4 +39,7 @@ async def db(tmp_path):
     async with d.session() as s:
         await s.execute(text("ALTER TABLE audit_log DISABLE TRIGGER USER"))
         await s.execute(text(f"DROP TABLE IF EXISTS {TABLES} CASCADE"))
+        await s.execute(
+            text("DROP FUNCTION IF EXISTS tsp_tsv(text, text), tsp_norm_devanagari(text)")
+        )
     await d.dispose()

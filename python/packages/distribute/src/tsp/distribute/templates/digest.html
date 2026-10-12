@@ -1,0 +1,7 @@
+{% extends "base.html" %}{% block subject %}{{ subject_line }}{% endblock %}
+{% block body %}<div lang="{{ lang }}">
+<p>{{ intro }}</p>
+{% for it in items %}<h3 style="margin:18px 0 4px"><a href="{{ it.url }}" style="color:#c84614;text-decoration:none">{{ it.title }}</a></h3>
+{% if it.summary %}<p style="margin:0 0 6px">{{ it.summary }}</p>{% endif %}
+<p style="margin:0 0 10px"><a href="{{ it.url }}">{{ read_more }}</a></p>
+{% endfor %}</div>{% endblock %}

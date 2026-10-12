@@ -1,0 +1,22 @@
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Language: hi\n"
+
+msgid "newsletter.subject"
+msgstr "इस सप्ताह: {count} नई रेसिपी"
+
+msgid "newsletter.intro"
+msgstr "इस सप्ताह हमने जो प्रकाशित किया, वह यहाँ है।"
+
+msgid "newsletter.read_more"
+msgstr "रेसिपी पढ़ें"
+
+msgid "newsletter.unsubscribe"
+msgstr "सदस्यता रद्द करें"
+
+msgid "share.recipe_by"
+msgstr "{author} की रेसिपी"
+
+msgid "ai_image.label"
+msgstr "एआई द्वारा बनाया गया चित्र"
