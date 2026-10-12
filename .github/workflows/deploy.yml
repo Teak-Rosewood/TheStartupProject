@@ -3,7 +3,7 @@ name: deploy
 # require reviewers (needs a public repo or a paid plan; otherwise deploy from version tags).
 on:
   push:
-    branches: [main]
+    branches: [master]
   workflow_dispatch:
     inputs:
       image_tag:

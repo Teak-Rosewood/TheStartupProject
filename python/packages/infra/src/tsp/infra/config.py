@@ -137,6 +137,7 @@ class GithubConfig(BaseModel):
     owner: str
     repo: str
     environment: str = "prod"
+    branch: str = "master"  # the default branch; scheduled drills run from it
 
 
 class EnvConfig(BaseModel):

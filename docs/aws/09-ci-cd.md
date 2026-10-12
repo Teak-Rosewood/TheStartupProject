@@ -8,7 +8,7 @@ GitHub's OIDC identity provider is trusted by an IAM role (created by `OidcStack
 | Role | Used by | Can do |
 |---|---|---|
 | diff (read-only) | pull requests | synth and `cdk diff` only |
-| deploy | `main` / release tags in environment `prod` | assume the CDK bootstrap roles, push to ECR, run migration task, sync the frontend bucket |
+| deploy | `master` / release tags in environment `prod` | assume the CDK bootstrap roles, push to ECR, run migration task, sync the frontend bucket |
 | restore-drill | monthly drill | read backups, create a temporary instance or container |
 
 ## Workflows
@@ -16,7 +16,7 @@ GitHub's OIDC identity provider is trusted by an IAM role (created by `OidcStack
 |---|---|---|
 | `python.yml` | PR, push | ruff, format check, mypy, pytest for every package; integration tests against real Postgres, Valkey and DynamoDB Local containers |
 | `infra.yml` | PR touching infra | `cdk synth`, cdk-nag security rules, CDK assertion tests, `cdk diff` posted as a PR comment |
-| `deploy.yml` | push to `main` (or a version tag, see below) | test gates → build arm64 image → push to ECR (scan on push) → `cdk deploy` → migrate → wait for stable → smoke test → publish frontend |
+| `deploy.yml` | push to `master` (or a version tag, see below) | test gates → build arm64 image → push to ECR (scan on push) → `cdk deploy` → migrate → wait for stable → smoke test → publish frontend |
 | `backup-drill.yml` | monthly schedule | restore the latest backup into a throwaway Postgres and run checks |
 | `drift.yml` | weekly | `cdk diff`; opens an issue when production differs from code |
 
@@ -60,10 +60,10 @@ CI cannot do the first deploy because it needs your decisions and DNS records.
 4. `cdk deploy 'prod/tsp-prod-backend'`. Wait here only if you enabled `auth.custom_domain`: add the validation record at your registrar while the stack waits.
 5. `cdk deploy 'prod/tsp-prod-edge'` and add its certificate-validation CNAME at your registrar ([edge and domain](03-edge-and-domain.md)). The stack completes when validation passes.
 6. Point `app.<domain>` at the CloudFront domain from the stack output.
-From then on every push to `main` deploys through `deploy.yml`.
+From then on every push to `master` deploys through `deploy.yml`.
 
 ## Repository setup
 - Environment `prod` with the variables listed in account setup.
-- Branch protection on `main`: require the `python` and `infra` checks, no force-push.
+- Branch protection on `master`: require the `python` and `infra` checks, no force-push.
 - Dependabot for Python, GitHub Actions and Docker base images.
 - ECR lifecycle rule keeps the last 20 images; untagged images expire after 7 days.

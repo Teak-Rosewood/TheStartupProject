@@ -129,8 +129,8 @@ class GithubOidc(Construct):
             )
         )
 
-        # Scheduled jobs on main (backup restore drill).
-        self.drill = role("Drill", [f"repo:{repo}:ref:refs/heads/main"])
+        # Scheduled jobs on the default branch (backup restore drill).
+        self.drill = role("Drill", [f"repo:{repo}:ref:refs/heads/{gh.branch}"])
         self.drill.add_managed_policy(
             iam.ManagedPolicy.from_aws_managed_policy_name("ReadOnlyAccess")
         )
