@@ -16,11 +16,16 @@ def _summary_line(r: ProviderResult) -> str:
     ok = len(r.ok_models)
     if r.key_status is Status.OK and not r.models:
         return f"{r.platform:<12} key ok, listed {r.listed}, nothing probed (no free models; omit --free-only)"
-    if r.key_status is not Status.OK and not r.models:
+    if r.key_status is not Status.OK and not r.models and not r.embedding_models:
         return f"{r.platform:<12} {r.key_status.value:<17} {r.error or ''}"[:160]
     reasons = Counter(m.status.value for m in r.models if m.status is not Status.OK)
     top = ", ".join(f"{k}={v}" for k, v in reasons.most_common(3))
-    return f"{r.platform:<12} ok {ok}/{len(r.models)} (listed {r.listed})  {top}"
+    embed = (
+        f", embeddings {len(r.ok_embedding_models)}/{len(r.embedding_models)}"
+        if r.embedding_models
+        else ""
+    )
+    return f"{r.platform:<12} ok {ok}/{len(r.models)} (listed {r.listed}){embed}  {top}"
 
 
 def _cmd_verify(args: argparse.Namespace) -> int:
@@ -53,13 +58,16 @@ def _cmd_verify(args: argparse.Namespace) -> int:
     if args.verbose:
         print()
         for r in catalog.providers.values():
-            for m in r.models:
+            for m in [*r.models, *r.embedding_models]:
                 lat = f"{m.latency_ms:.0f}ms" if m.latency_ms else "-"
+                dims = f" dims={m.dims}" if m.dims else ""
                 print(
-                    f"{r.platform:<12} {m.status.value:<17} {lat:>7}  {m.id}  {m.error or ''}"[:200]
+                    f"{r.platform:<12} {m.status.value:<17} {lat:>7}  {m.id}{dims}  {m.error or ''}"[
+                        :200
+                    ]
                 )
     path = catalog.save(args.out)
-    working = sum(1 for r in catalog.providers.values() if r.ok_models)
+    working = sum(1 for r in catalog.providers.values() if r.ok_models or r.ok_embedding_models)
     print(f"\n{working}/{len(catalog.providers)} providers have working models. Catalog: {path}")
     return 0
 

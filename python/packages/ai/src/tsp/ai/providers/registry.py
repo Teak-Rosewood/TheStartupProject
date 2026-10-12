@@ -11,6 +11,7 @@ from dataclasses import dataclass
 
 from .anthropic import AnthropicProvider
 from .base import BaseProvider
+from .bedrock import BedrockProvider
 from .cohere import CohereProvider
 from .google import GoogleProvider
 from .openai_compat import OpenAICompatProvider
@@ -59,6 +60,7 @@ _SPECS = [
     ProviderSpec("anthropic", "Anthropic", native=AnthropicProvider),
     ProviderSpec("google", "Google Gemini", native=GoogleProvider, free_tier_only=True),
     ProviderSpec("cohere", "Cohere", native=CohereProvider),
+    ProviderSpec("bedrock", "AWS Bedrock", native=BedrockProvider, keyless=True),
     _compat("agnes", "Agnes AI", "https://apihub.agnes-ai.com/v1"),
     _compat("blockrun", "BlockRun", "https://api.blockrun.ai/v1"),
     _compat("cerebras", "Cerebras", "https://api.cerebras.ai/v1", free_tier_only=True),

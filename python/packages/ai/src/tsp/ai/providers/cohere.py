@@ -89,6 +89,42 @@ class CohereProvider(BaseProvider):
             },
         }
 
+    async def embedding(
+        self,
+        api_key: str,
+        input: str | list[str],
+        model_id: str,
+        options: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """``POST /embed``. Options: ``input_type`` ("document" or "query")."""
+        options = options or {}
+        texts = [input] if isinstance(input, str) else input
+        payload = {
+            "model": model_id,
+            "texts": texts,
+            "input_type": "search_query"
+            if options.get("input_type") == "query"
+            else "search_document",
+            "embedding_types": ["float"],
+        }
+        try:
+            resp = await self._http.post(
+                "/embed", json=payload, headers={"Authorization": f"Bearer {api_key}"}
+            )
+        except httpx.RequestError as e:
+            raise ProviderHttpError(f"Request failed: {e}", status=500)
+        if resp.status_code >= 400:
+            raise build_error(resp.status_code, resp.text[:300])
+        data = resp.json()
+        vectors = data.get("embeddings", [])
+        if isinstance(vectors, dict):  # shape when embedding_types is requested
+            vectors = vectors.get("float", [])
+        tokens = (data.get("meta") or {}).get("billed_units", {}).get("input_tokens", 0)
+        return {
+            "data": [{"index": i, "embedding": v} for i, v in enumerate(vectors)],
+            "usage": {"prompt_tokens": tokens, "total_tokens": tokens},
+        }
+
     def stream_chat_completion(
         self,
         api_key: str,
@@ -107,15 +143,18 @@ class CohereProvider(BaseProvider):
             return {"valid": False, "error": str(e)}
 
     async def list_models(self, api_key: str) -> list[dict[str, Any]]:
-        resp = await self._http.get(
-            "/models",
-            headers={"Authorization": f"Bearer {api_key}"},
-            params={"endpoint": "chat", "page_size": 100},
-            timeout=15.0,
-        )
-        if resp.status_code != 200:
-            raise build_error(resp.status_code, resp.text[:300])
-        return [{"id": m["name"], **m} for m in resp.json().get("models", [])]
+        found: list[dict[str, Any]] = []
+        for endpoint in ("chat", "embed"):
+            resp = await self._http.get(
+                "/models",
+                headers={"Authorization": f"Bearer {api_key}"},
+                params={"endpoint": endpoint, "page_size": 100},
+                timeout=15.0,
+            )
+            if resp.status_code != 200:
+                raise build_error(resp.status_code, resp.text[:300])
+            found += [{"id": m["name"], **m} for m in resp.json().get("models", [])]
+        return found
 
     async def close(self):
         await self._http.aclose()

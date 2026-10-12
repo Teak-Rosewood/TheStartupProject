@@ -3960,6 +3960,9 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
+bedrock = [
+    { name = "boto3" },
+]
 server = [
     { name = "fastapi" },
     { name = "uvicorn", extra = ["standard"] },
@@ -3967,12 +3970,13 @@ server = [
 
 [package.metadata]
 requires-dist = [
+    { name = "boto3", marker = "extra == 'bedrock'", specifier = ">=1.34" },
     { name = "fastapi", marker = "extra == 'server'", specifier = ">=0.110" },
     { name = "httpx", specifier = ">=0.24" },
     { name = "pydantic", specifier = ">=2" },
     { name = "uvicorn", extras = ["standard"], marker = "extra == 'server'", specifier = ">=0.29" },
 ]
-provides-extras = ["server"]
+provides-extras = ["server", "bedrock"]
 
 [[package]]
 name = "tsp-api-app"

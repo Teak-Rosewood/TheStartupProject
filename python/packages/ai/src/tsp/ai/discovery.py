@@ -16,10 +16,11 @@ from .catalog import ModelCatalog, ModelResult, ProviderResult, Status
 from .client import LLMClient
 from .providers.base import BaseProvider, ProviderHttpError
 from .providers.registry import PROVIDERS, ProviderSpec
-from .router import is_chat_model
+from .router import is_chat_model, is_embedding_model
 
 PROBE_PROMPT = [{"role": "user", "content": "Reply with the single word OK."}]
 PROBE_OPTIONS = {"max_tokens": 32, "temperature": 0}
+EMBED_PROBE_TEXT = "tsp-ai probe"
 PROBE_TIMEOUT_S = 45.0
 MAX_RETRY_WAIT_S = 20.0
 RATE_LIMIT_RETRIES = 2
@@ -140,6 +141,39 @@ async def _probe(provider: BaseProvider, api_key: str, model_id: str) -> ModelRe
     raise AssertionError("unreachable")
 
 
+def _vector_dims(response: Any) -> int | None:
+    try:
+        return len(response["data"][0]["embedding"]) or None
+    except (KeyError, IndexError, TypeError):
+        return None
+
+
+async def _probe_embedding(provider: BaseProvider, api_key: str, model_id: str) -> ModelResult:
+    """One short input; records the vector length so `embeddings.create` can reject a mismatch."""
+    start = time.monotonic()
+    try:
+        response = await asyncio.wait_for(
+            provider.embedding(api_key, [EMBED_PROBE_TEXT], model_id, {}), PROBE_TIMEOUT_S
+        )
+    except asyncio.TimeoutError:
+        return ModelResult(id=model_id, status=Status.TIMEOUT, error="probe timed out")
+    except ProviderHttpError as e:
+        return ModelResult(id=model_id, status=classify(e), error=str(e)[:300])
+    except NotImplementedError:
+        return ModelResult(id=model_id, status=Status.SKIPPED, error="embeddings not supported")
+    except Exception as e:
+        return ModelResult(
+            id=model_id, status=Status.SERVER_ERROR, error=f"{type(e).__name__}: {e}"[:300]
+        )
+    latency = round((time.monotonic() - start) * 1000)
+    dims = _vector_dims(response)
+    if dims is None:
+        return ModelResult(
+            id=model_id, status=Status.EMPTY_REPLY, latency_ms=latency, error=str(response)[:300]
+        )
+    return ModelResult(id=model_id, status=Status.OK, latency_ms=latency, dims=dims)
+
+
 async def verify_provider(
     spec: ProviderSpec,
     provider: BaseProvider,
@@ -172,13 +206,17 @@ async def verify_provider(
             error=f"list_models: {type(e).__name__}: {e}"[:300],
         )
 
+    embed_entries = [e for e in entries if (mid := _model_id(e)) and is_embedding_model(mid)]
     entries = [e for e in entries if (mid := _model_id(e)) and is_chat_model(mid)]
     listed = len(entries)
     if free_only:
         entries = [e for e in entries if _is_free(spec, e)]
+        embed_entries = [e for e in embed_entries if _is_free(spec, e)]
     ids = [_model_id(e) for e in entries]
+    embed_ids = [_model_id(e) for e in embed_entries]
     if max_models:
         ids = ids[:max_models]
+        embed_ids = embed_ids[:max_models]
 
     sem = asyncio.Semaphore(concurrency)
 
@@ -186,12 +224,21 @@ async def verify_provider(
         async with sem:
             return await _probe(provider, api_key, model_id)
 
+    async def guarded_embedding(model_id: str) -> ModelResult:
+        async with sem:
+            return await _probe_embedding(provider, api_key, model_id)
+
     results = await asyncio.gather(*(guarded(m) for m in ids if m))
+    embedding_results = await asyncio.gather(*(guarded_embedding(m) for m in embed_ids if m))
     key_status = Status.OK
     if results and all(r.status is Status.AUTH for r in results):
         key_status = Status.AUTH
     return ProviderResult(
-        platform=spec.platform, key_status=key_status, listed=listed, models=list(results)
+        platform=spec.platform,
+        key_status=key_status,
+        listed=listed,
+        models=list(results),
+        embedding_models=list(embedding_results),
     )
 
 

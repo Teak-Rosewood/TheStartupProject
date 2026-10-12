@@ -13,6 +13,7 @@ dependencies = ["httpx>=0.24", "pydantic>=2"]
 
 [project.optional-dependencies]
 server = ["fastapi>=0.110", "uvicorn[standard]>=0.29"]
+bedrock = ["boto3>=1.34"]
 
 [project.scripts]
 tsp-ai = "tsp.ai.cli:main"

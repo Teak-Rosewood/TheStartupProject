@@ -11,18 +11,22 @@ import threading
 import time
 from collections.abc import AsyncGenerator, Coroutine
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from .catalog import ModelCatalog
 from .config import load_env_file
-from .fallback import run_fallback_loop
+from .fallback import classify_error, run_fallback_loop
 from .models import (
     ChatCompletionChunk,
     ChatCompletionResponse,
     Choice,
     ChoiceMessage,
     DeltaMessage,
+    EmbeddingDimensionError,
+    EmbeddingItem,
+    EmbeddingResponse,
     StreamChoice,
+    Usage,
 )
 from .providers.base import ProviderHttpError
 from .providers.registry import PROVIDERS, ProviderSpec, get_spec
@@ -90,6 +94,15 @@ class LLMClient:
                 ]
             self._router.add_provider(platform, provider, models)
             self._router.add_key(platform, api_key, label=config.get("label", "main"))
+            if catalog is not None:
+                result = catalog.providers.get(platform)
+                embedding_models = result.ok_embedding_models if result else {}
+            else:
+                configured = config.get("embedding_models", {})
+                embedding_models = (
+                    dict(configured) if isinstance(configured, dict) else dict.fromkeys(configured)
+                )
+            self._router.set_embedding_models(platform, embedding_models)
 
     @classmethod
     def from_env(
@@ -111,6 +124,10 @@ class LLMClient:
     @property
     def chat(self) -> "ChatNamespace":
         return ChatNamespace(self)
+
+    @property
+    def embeddings(self) -> "EmbeddingsNamespace":
+        return EmbeddingsNamespace(self)
 
     def get_models(self) -> list[dict[str, Any]]:
         """Get all routable models."""
@@ -134,6 +151,9 @@ class LLMClient:
                 for m in (result.ok_models if result else [])
             ]
             self._router.set_models(platform, models)
+            self._router.set_embedding_models(
+                platform, result.ok_embedding_models if result else {}
+            )
             total += len(models)
         return total
 
@@ -346,6 +366,141 @@ class _SyncChat:
         return owner._iterate(agen)
 
 
+class EmbeddingsNamespace:
+    """``client.embeddings.create(...)``: vectors from an explicitly named embedding model."""
+
+    def __init__(self, client: LLMClient):
+        self._client = client
+
+    async def create(
+        self,
+        model: str,
+        input: list[str] | str,
+        *,
+        dims: int | None = None,
+        input_type: Literal["document", "query"] = "document",
+        batch_size: int = 96,
+    ) -> EmbeddingResponse:
+        """Embed ``input`` in batches of ``batch_size``; vectors come back in input order.
+
+        There is no ``auto`` routing: different models give incompatible vectors. Fallback goes
+        only across keys and providers that serve the same model id. A vector whose length is not
+        ``dims`` (or the dims recorded in the catalog) raises :class:`EmbeddingDimensionError`;
+        nothing is truncated or padded.
+        """
+        texts = [input] if isinstance(input, str) else list(input)
+        if not model or model == "auto" or model.startswith("auto:"):
+            raise ValueError("embeddings need an explicit model id; 'auto' is not supported")
+        if not texts:
+            raise ValueError("input must contain at least one text")
+        if batch_size < 1:
+            raise ValueError("batch_size must be at least 1")
+
+        options: dict[str, Any] = {"input_type": input_type}
+        if dims:
+            options["dims"] = dims
+        vectors: list[list[float]] = []
+        usage = Usage()
+        provider = ""
+        expected = dims
+        for i in range(0, len(texts), batch_size):
+            batch = texts[i : i + batch_size]
+            platform, batch_vectors, batch_usage, known = await self._embed_batch(
+                model, batch, options, expected
+            )
+            provider = provider or platform
+            expected = expected or known or len(batch_vectors[0])
+            vectors += batch_vectors
+            usage.prompt_tokens += batch_usage.prompt_tokens
+            usage.total_tokens += batch_usage.total_tokens
+        return EmbeddingResponse(
+            model=model,
+            provider=provider,
+            dims=expected or 0,
+            data=[EmbeddingItem(index=i, embedding=v) for i, v in enumerate(vectors)],
+            usage=usage,
+        )
+
+    async def _embed_batch(
+        self, model: str, batch: list[str], options: dict[str, Any], expected: int | None
+    ) -> tuple[str, list[list[float]], Usage, int | None]:
+        router = self._client._router
+        tried: set[str] = set()
+        last: ProviderHttpError | None = None
+        while True:
+            found = router.route_embedding(model, tried)
+            if found is None:
+                raise last or ProviderHttpError(
+                    f"no provider serves embedding model {model!r}", status=404
+                )
+            route, known_dims = found
+            tried.add(route.key.key_id)
+            started = time.monotonic()
+            try:
+                try:
+                    raw = await route.provider.embedding(
+                        route.key.api_key, batch, route.model_id, options
+                    )
+                except ProviderHttpError:
+                    raise
+                except NotImplementedError as e:
+                    raise ProviderHttpError(str(e), status=400) from e
+                except Exception as e:
+                    raise ProviderHttpError(f"{type(e).__name__}: {e}", status=500) from e
+                vectors = _ordered_vectors(raw, len(batch))
+            except ProviderHttpError as e:
+                last = e
+                router.record_failure(route.platform, route.model_id, route.key.key_id, e)
+                if classify_error(e) == "bad_request":
+                    raise
+                continue
+            want = expected or known_dims
+            for v in vectors:
+                if len(v) != (want or len(vectors[0])):
+                    raise EmbeddingDimensionError(
+                        f"{route.platform}/{route.model_id} returned a vector of {len(v)} "
+                        f"dimensions, expected {want or len(vectors[0])}"
+                    )
+            raw_usage = raw.get("usage") or {}
+            tokens = int(raw_usage.get("total_tokens") or raw_usage.get("prompt_tokens") or 0)
+            router.record_success(
+                route.platform,
+                route.model_id,
+                route.key.key_id,
+                tokens,
+                int((time.monotonic() - started) * 1000),
+                0.0,
+            )
+            return (
+                route.platform,
+                vectors,
+                Usage(prompt_tokens=tokens, total_tokens=tokens),
+                known_dims,
+            )
+
+
+def _ordered_vectors(raw: dict[str, Any], count: int) -> list[list[float]]:
+    """Vectors from an OpenAI-shaped body in input order; a short or malformed body is a 502."""
+    try:
+        items = sorted(raw["data"], key=lambda d: d["index"])
+        vectors = [[float(x) for x in d["embedding"]] for d in items]
+    except (KeyError, TypeError, ValueError):
+        raise ProviderHttpError("malformed embeddings response", status=502) from None
+    if len(vectors) != count or not all(vectors):
+        raise ProviderHttpError(
+            f"provider returned {len(vectors)} usable vectors for {count} inputs", status=502
+        )
+    return vectors
+
+
+class _SyncEmbeddings:
+    def __init__(self, sync: "SyncLLMClient"):
+        self._sync = sync
+
+    def create(self, *args: Any, **kwargs: Any) -> EmbeddingResponse:
+        return self._sync._run(self._sync._client.embeddings.create(*args, **kwargs))
+
+
 class SyncLLMClient:
     """Blocking wrapper: same API as LLMClient, runs the async client on a private loop thread."""
 
@@ -355,6 +510,7 @@ class SyncLLMClient:
         self._thread = threading.Thread(target=self._loop.run_forever, daemon=True)
         self._thread.start()
         self.chat = _SyncChat(self)
+        self.embeddings = _SyncEmbeddings(self)
 
     @classmethod
     def from_env(cls, *args: Any, **kwargs: Any) -> "SyncLLMClient":
@@ -364,6 +520,7 @@ class SyncLLMClient:
         self._thread = threading.Thread(target=self._loop.run_forever, daemon=True)
         self._thread.start()
         self.chat = _SyncChat(self)
+        self.embeddings = _SyncEmbeddings(self)
         return self
 
     def _run(self, coro):

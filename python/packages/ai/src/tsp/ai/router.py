@@ -102,6 +102,10 @@ _NON_CHAT_TOKENS = (
 )
 
 
+def is_embedding_model(model_id: str) -> bool:
+    return "embed" in model_id.lower()
+
+
 def is_chat_model(model_id: str) -> bool:
     """Heuristic: False for ids that name an embedding/audio/image/moderation model."""
     mid = model_id.lower()
@@ -168,6 +172,9 @@ class LLMRouter:
         self._rate_limiter = RateLimitTracker()
         self._max_retries = max_retries
         self._penalties: dict[int, float] = {}  # model_idx -> penalty
+        # platform -> {embedding model id: known dims}. Kept apart from chat models so "auto"
+        # routing can never pick an embedding model.
+        self._embedding_models: dict[str, dict[str, int | None]] = {}
 
     def add_provider(
         self, platform: str, provider: BaseProvider, models: list[ModelCandidate] | None = None
@@ -185,6 +192,32 @@ class LLMRouter:
             if platform not in self._providers:
                 raise KeyError(platform)
             self._models[platform] = list(models)
+
+    def set_embedding_models(self, platform: str, models: dict[str, int | None]) -> None:
+        """Replace one provider's embedding models (id -> dims when known)."""
+        with self._lock:
+            if platform not in self._providers:
+                raise KeyError(platform)
+            self._embedding_models[platform] = dict(models)
+
+    def route_embedding(
+        self, model: str, exclude: frozenset[str] | set[str] = frozenset()
+    ) -> tuple[RouteResult, int | None] | None:
+        """Pick a provider and key serving exactly ``model``, skipping keys in ``exclude``.
+
+        No scoring and no "closest match": a different model would give incompatible vectors.
+        Returns the route and the dims recorded for the model, or None.
+        """
+        with self._lock:
+            for platform, models in self._embedding_models.items():
+                provider = self._providers.get(platform)
+                if provider is None or model not in models:
+                    continue
+                key = self._select_key(platform, model, {}, exclude)
+                if key:
+                    route = RouteResult(provider, model, model, key, platform, score=0.0)
+                    return route, models[model]
+        return None
 
     def add_key(
         self,
@@ -374,7 +407,13 @@ class LLMRouter:
 
         return self._get_all_candidates()
 
-    def _select_key(self, platform: str, model_id: str, options: dict[str, Any]) -> KeyEntry | None:
+    def _select_key(
+        self,
+        platform: str,
+        model_id: str,
+        options: dict[str, Any],
+        exclude: frozenset[str] | set[str] = frozenset(),
+    ) -> KeyEntry | None:
         """Select an available key for the platform and model."""
         keys = self._keys.get(platform, [])
         if not keys:
@@ -382,7 +421,7 @@ class LLMRouter:
 
         time.time()
         for key in keys:
-            if not key.enabled:
+            if not key.enabled or key.key_id in exclude:
                 continue
 
             # Check key cooldown using is_cooled_down

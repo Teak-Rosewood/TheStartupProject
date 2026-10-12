@@ -208,6 +208,38 @@ class OpenAICompatProvider(BaseProvider):
         except httpx.RequestError as e:
             raise ProviderHttpError(f"Stream failed: {e}", status=500)
 
+    async def embedding(
+        self,
+        api_key: str,
+        input: str | list[str],
+        model_id: str,
+        options: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """``POST /embeddings``. Options: ``dims`` (sent as ``dimensions``)."""
+        options = options or {}
+        payload: dict[str, Any] = {"model": model_id, "input": input}
+        if options.get("dims"):
+            payload["dimensions"] = options["dims"]
+        client = await self._get_client()
+        try:
+            response = await client.post(
+                f"{self._base_url}/embeddings", json=payload, headers=self._auth_headers(api_key)
+            )
+        except httpx.TimeoutException as e:
+            raise ProviderHttpError(f"Request timeout: {e}", status=408)
+        except httpx.RequestError as e:
+            raise ProviderHttpError(f"Request failed: {e}", status=500)
+        if response.status_code != 200:
+            raise ProviderHttpError(
+                self._extract_error_message(response),
+                status=response.status_code,
+                retry_after_ms=parse_retry_after_ms(response.headers.get("Retry-After")),
+            )
+        try:
+            return response.json()
+        except ValueError:
+            raise ProviderHttpError("embeddings endpoint returned non-JSON", status=502) from None
+
     async def validate_key(self, api_key: str) -> bool | dict[str, Any]:
         """Validate an API key by making a minimal request."""
         client = await self._get_client()
