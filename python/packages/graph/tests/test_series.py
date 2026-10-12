@@ -1,7 +1,7 @@
 from datetime import date
 
 import pytest
-from conftest import ORG, OTHER_ORG
+from graph_support import ORG, OTHER_ORG
 from tsp.graph import GraphService, SeriesService
 from tsp.graph.enrich import EnrichContext, enrich_on_demand
 

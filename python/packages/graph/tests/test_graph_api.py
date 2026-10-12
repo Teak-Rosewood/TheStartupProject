@@ -1,8 +1,8 @@
 from datetime import date
 
-from conftest import ORG, URL
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from graph_support import ORG, URL
 from tsp.db import Database
 from tsp.graph import GraphService, SeriesService, build_router
 

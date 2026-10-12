@@ -1,7 +1,7 @@
 from datetime import date
 
 import pytest
-from conftest import ORG, OTHER_ORG
+from graph_support import ORG, OTHER_ORG
 from sqlalchemy import select
 from tsp.graph import Claim, Entity, GraphService, normalise
 
