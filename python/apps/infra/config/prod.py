@@ -13,6 +13,7 @@ def prod() -> EnvConfig:
         github=GithubConfig(owner="your-org", repo="TheStartupProject"),  # CHANGE
         alarm_email="alerts@example.com",  # CHANGE
         budget_usd=50,
+        log_retention_days=180,  # CERT-In expects 180 days of security logs (verify); lower it if it does not apply
         compute=ComputeConfig(),
         image_tag=os.environ.get("TSP_IMAGE_TAG", "bootstrap"),
         postgres_image_tag=os.environ.get("TSP_PG_IMAGE_TAG", "bootstrap"),
