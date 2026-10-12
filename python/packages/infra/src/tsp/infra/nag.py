@@ -72,6 +72,7 @@ def acknowledge_known(
     env: EnvConfig,
     asg_logical_id: str,
     bucket_logical_ids: Sequence[str] = (),
+    vector_bucket_logical_ids: Sequence[str] = (),
 ) -> None:
     rules = {k: v for k, v in _STATIC.items()}
     rules.update(_MANAGED)
@@ -87,6 +88,10 @@ def acknowledge_known(
             rules[f"IAM5[Resource::<{bucket_id}.Arn>{suffix}]"] = (
                 "Object-level access to this environment's own bucket (backups, personal-data exports or customer uploads)."
             )
+    for vector_id in vector_bucket_logical_ids:
+        rules[f"IAM5[Resource::<{vector_id}.VectorBucketArn>/index/*]"] = (
+            "Access to the vector indexes (one per organization and collection) inside this environment's own vector bucket."
+        )
     cdk.Validations.of(scope).acknowledge(
         *(cdk.Acknowledgment(id=_P + k, reason=v) for k, v in rules.items())
     )
