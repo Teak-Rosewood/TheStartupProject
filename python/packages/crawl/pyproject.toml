@@ -1,0 +1,23 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "tsp-crawl"
+version = "0.1.0"
+description = "Safe, polite web fetching: SSRF-guarded HTTP, robots.txt, sitemaps, Markdown extraction."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+dependencies = ["httpx>=0.24", "trafilatura>=1.12", "protego>=0.3", "tsp-cache"]
+
+[project.optional-dependencies]
+browser = ["crawl4ai>=0.4"]
+pdf = ["docling>=2"]
+scrapy = ["scrapy>=2.11"]
+
+[tool.uv.sources]
+tsp-cache = { workspace = true }
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/tsp"]
