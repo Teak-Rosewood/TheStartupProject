@@ -44,6 +44,7 @@ members = [
     "tsp-nosql",
     "tsp-notify",
     "tsp-payments",
+    "tsp-paywall",
     "tsp-server",
     "tsp-sources",
     "tsp-storage",
@@ -8105,6 +8106,26 @@ requires-dist = [
     { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2" },
     { name = "tomli", marker = "python_full_version < '3.11'", specifier = ">=2" },
     { name = "tsp-audit", editable = "packages/audit" },
+    { name = "tsp-db", editable = "packages/db" },
+]
+
+[[package]]
+name = "tsp-paywall"
+version = "0.1.0"
+source = { editable = "packages/paywall" }
+dependencies = [
+    { name = "fastapi" },
+    { name = "sqlalchemy", version = "2.0.54", source = { registry = "https://pypi.org/simple" }, extra = ["asyncio"], marker = "python_full_version < '3.11'" },
+    { name = "sqlalchemy", version = "2.1.4", source = { registry = "https://pypi.org/simple" }, extra = ["asyncio"], marker = "python_full_version >= '3.11'" },
+    { name = "tsp-cache" },
+    { name = "tsp-db" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastapi", specifier = ">=0.110" },
+    { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2" },
+    { name = "tsp-cache", editable = "packages/cache" },
     { name = "tsp-db", editable = "packages/db" },
 ]
 

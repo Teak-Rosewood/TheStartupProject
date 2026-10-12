@@ -1,0 +1,19 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "tsp-paywall"
+version = "0.1.0"
+description = "Metered and hard paywalls: signed anonymous meter, account meter, shared-network-safe device signal, verified crawlers, gift links, pay-per-item credits."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+dependencies = ["sqlalchemy[asyncio]>=2", "fastapi>=0.110", "tsp-db", "tsp-cache"]
+
+[tool.uv.sources]
+tsp-db = { workspace = true }
+tsp-cache = { workspace = true }
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/tsp"]

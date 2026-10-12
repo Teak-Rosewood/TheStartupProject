@@ -14,6 +14,7 @@ A cloneable kit of building blocks for starting a company's software: pick the m
 | Waitlist, first-party events, attribution, referrals, metrics | tsp-growth | [docs/modules/growth.md](docs/modules/growth.md) |
 | Feature flags and kill switches, direct-to-S3 uploads, usage metering and the AI gateway | tsp-flags, tsp-storage, tsp-metering | [docs/modules/product-ops.md](docs/modules/product-ops.md) |
 | Vector and hybrid search, document ingestion | `tsp-vector` | [docs/modules/vector.md](docs/modules/vector.md) |
+| Paywalls (metered, hard, gift links, pay-per-item) | `tsp-paywall` | [docs/modules/paywall.md](docs/modules/paywall.md) |
 | Web app (React) and landing site (Astro) | `js/packages/web-app`, `js/packages/landing` | [js/README.md](js/README.md) |
 | Mobile starter (Expo, source only) | `js/packages/mobile` | [js/README.md](js/README.md) |
 

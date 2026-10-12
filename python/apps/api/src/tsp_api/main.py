@@ -12,6 +12,7 @@ from tsp.accounts import Accounts, User
 from tsp.accounts import api as accounts_api
 from tsp.admin import AdminSettings, mount_admin
 from tsp.ai import LLMClient
+from tsp.cache import NullCache
 from tsp.compliance import (
     CognitoIdentity,
     Compliance,
@@ -30,6 +31,10 @@ from tsp.metering import build_router as metering_router
 from tsp.notify import api as notify_api
 from tsp.notify import register_with_compliance as notify_register
 from tsp.payments import api as payments_api
+from tsp.paywall import Paywall
+from tsp.paywall import build_router as paywall_router
+from tsp.paywall import register_jobs as paywall_jobs
+from tsp.paywall import register_with_compliance as paywall_compliance
 from tsp.server import (
     Settings,
     configure_logging,
@@ -187,6 +192,17 @@ def vector_lifespan(service: VectorService) -> Any:
     return run
 
 
+def paywall_lifespan(pw: Paywall) -> Any:
+    """Use the app's cache for the shared-network detection once the app has created it."""
+
+    @asynccontextmanager
+    async def run(app: Any) -> AsyncIterator[None]:
+        pw.cache = app.state.cache
+        yield
+
+    return run
+
+
 def build_admin_settings(env: dict[str, str] | None = None) -> AdminSettings | None:
     """Staff console settings from the environment; None (console disabled) if not all are set."""
     e = dict(os.environ) if env is None else env
@@ -239,6 +255,15 @@ def build_app() -> FastAPI:
     if llm is not None:
         background.insert(0, llm_lifespan(llm))
         background.append(catalog_lifespan(llm))
+    paywall = (
+        Paywall(os.environ["PAYWALL_SECRET"], NullCache())
+        if os.environ.get("PAYWALL_SECRET")
+        else None
+    )
+    if paywall is not None:
+        paywall_compliance(compliance)
+        paywall_jobs(registry, paywall)
+        background.insert(0, paywall_lifespan(paywall))
     app = create_app(settings, background=background)
     app.state.compliance, app.state.accounts, app.state.payments, app.state.notifier = (
         compliance,
@@ -313,6 +338,14 @@ def build_app() -> FastAPI:
         app.state.vector = vector
         app.include_router(
             vector_router(vector, api.account, api.org_member, db_session, killed=vector_killed),
+            prefix=settings.api_prefix,
+        )
+    if paywall is not None:
+        app.state.paywall = paywall
+        app.include_router(
+            paywall_router(
+                paywall, api.account, optional_sub, db_session, secure_cookie=settings.env != "dev"
+            ),
             prefix=settings.api_prefix,
         )
     app.state.flags = flags

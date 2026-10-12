@@ -9,6 +9,7 @@
   - [Audit and compliance](modules/compliance.md) — consent, export, deletion, audit log
   - [Product operations](modules/product-ops.md) — flags, uploads, usage metering, AI gateway
   - [Vector search (`tsp.vector`)](modules/vector.md) — pgvector, hybrid search, ingestion, RAG building blocks
+  - [Paywall (`tsp.paywall`)](modules/paywall.md) — metered and hard paywalls
   - [AI (`tsp.ai`)](modules/ai.md) — multi-provider LLM client, router, verified model catalog, OpenAI-compatible server
 - [Startup guide](startup/README.md) — company setup, launch checklist, metrics, security baseline, pricing and GST, support, marketing
 - [Legal templates](legal/README.md) — Terms, Privacy, Cookie, AUP, Refund, DPA, sub-processors, retention, incident response
