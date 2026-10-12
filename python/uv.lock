@@ -20,6 +20,7 @@ members = [
     "tsp-db",
     "tsp-flags",
     "tsp-growth",
+    "tsp-i18n",
     "tsp-infra",
     "tsp-infra-app",
     "tsp-jobs",
@@ -4151,6 +4152,21 @@ requires-dist = [
     { name = "tsp-audit", editable = "packages/audit" },
     { name = "tsp-cache", editable = "packages/cache" },
     { name = "tsp-db", editable = "packages/db" },
+]
+
+[[package]]
+name = "tsp-i18n"
+version = "0.1.0"
+source = { editable = "packages/i18n" }
+dependencies = [
+    { name = "babel" },
+    { name = "fastapi" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "babel", specifier = ">=2.12" },
+    { name = "fastapi", specifier = ">=0.110" },
 ]
 
 [[package]]

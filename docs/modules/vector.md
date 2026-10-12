@@ -38,6 +38,12 @@ Migrate with `modules=[..., "tsp.vector"]` (creates the `vector` extension; the 
 
 The brief in `docs/plans/08-vector.md` listed routes without the organization in the path; these follow the other modules (`/orgs/{org_id}/...`) so the existing role checks apply.
 
+## Languages
+- **Full-text search by language.** Each passage stores a `lang` (a script check: Devanagari share of letters, 34% or more, is `hi`, otherwise `en`). English passages use Postgres's `english` configuration. Hindi passages use `simple` after a SQL function normalises spelling variants: nukta (plain, precomposed and combining forms), zero-width joiners, and chandrabindu versus anusvara. Postgres has no Hindi stemmer, so Hindi matches whole normalised words, not stems. Marathi and Nepali are Devanagari too and are indexed as Hindi. Passages indexed before migration `vector_0002` are tagged `en`; re-ingest Hindi documents to fix them.
+- **The query picks its configuration the same way**, from the query text.
+- **Search across languages needs a multilingual embedding model** (for example Cohere multilingual or Titan Text Embeddings v2). With an English-only model a Hindi question will not find an English passage. The test for this uses a stand-in embedder that shares dimensions between translated words: it proves the pipeline does not separate languages, not that your model does. Run `tsp-vector eval` with real Hindi and English questions against your model.
+- Not built: transliteration of Latin-script Hindi queries (Hinglish) before searching.
+
 ## Limits and choices
 - **One embedding size per database.** The column is `halfvec(VECTOR_DIMS)` (default 1024), fixed when the first migration runs. A model that returns another size is refused with an error, never truncated. Different sizes would need one chunk table per size.
 - Ids are text (hex) like the rest of the kit, not UUID columns.

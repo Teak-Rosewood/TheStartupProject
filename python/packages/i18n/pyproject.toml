@@ -1,0 +1,16 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "tsp-i18n"
+version = "0.1.0"
+description = "Message catalogs, language negotiation (URL prefix, cookie, Accept-Language) and hreflang links."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+dependencies = ["babel>=2.12", "fastapi>=0.110"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/tsp"]
+include = ["src/tsp/i18n/locales/**"]

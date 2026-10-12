@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any, Protocol, TypedDict
 
 
-class VectorItem(TypedDict):
+class _RequiredItem(TypedDict):
     id: str
     document_id: str
     ordinal: int
@@ -14,6 +14,10 @@ class VectorItem(TypedDict):
     token_count: int
     embed_model: str
     metadata: dict[str, Any]
+
+
+class VectorItem(_RequiredItem, total=False):
+    lang: str  # detected from the content when absent
 
 
 class Hit(TypedDict):
@@ -72,4 +76,5 @@ class TextSearch(Protocol):
         k: int,
         filter: dict[str, Any] | None = None,
         model: str | None = None,
+        lang: str | None = None,  # full-text configuration; detected from the text when None
     ) -> list[Hit]: ...

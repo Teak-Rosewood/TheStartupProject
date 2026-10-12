@@ -19,6 +19,7 @@
 | `tsp-flags` (`tsp.flags`) | runtime | feature flags, rollouts, kill switches; see [product operations](../modules/product-ops.md) |
 | `tsp-storage` (`tsp.storage`) | runtime | presigned uploads with size/type limits, per-org prefixes and quotas |
 | `tsp-metering` (`tsp.metering`) | runtime | usage records and token-to-credit pricing |
+| `tsp-i18n` (`tsp.i18n`) | runtime | message catalogs, language negotiation, hreflang; see [languages](../modules/i18n.md) |
 | `tsp-vector` (`tsp.vector`) | runtime | pgvector / S3 Vectors stores, hybrid search, chunking, ingestion jobs; see [vector search](../modules/vector.md) |
 | `tsp-ai` (`tsp.ai`) | runtime | multi-provider LLM client and server (already built) |
 

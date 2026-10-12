@@ -7,6 +7,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 from tsp.db import Database
 
+from .lang import detect_lang
 from .store import Hit, VectorItem
 
 
@@ -22,11 +23,12 @@ async def scope(session: AsyncSession, org_id: str) -> None:
 _INSERT = text(
     """
     INSERT INTO vector_chunks (id, org_id, collection_id, document_id, ordinal, content,
-                               token_count, embedding, embed_model, metadata)
+                               token_count, embedding, embed_model, metadata, lang)
     VALUES (:id, :org, :col, :doc, :ord, :content, :tok, CAST(:emb AS halfvec), :model,
-            CAST(:meta AS jsonb))
+            CAST(:meta AS jsonb), :lang)
     ON CONFLICT (id) DO UPDATE SET content = EXCLUDED.content, token_count = EXCLUDED.token_count,
-        embedding = EXCLUDED.embedding, embed_model = EXCLUDED.embed_model, metadata = EXCLUDED.metadata
+        embedding = EXCLUDED.embedding, embed_model = EXCLUDED.embed_model,
+        metadata = EXCLUDED.metadata, lang = EXCLUDED.lang
     WHERE vector_chunks.org_id = EXCLUDED.org_id
     """
 )
@@ -45,6 +47,7 @@ def _rows(org_id: str, collection_id: str, items: list[VectorItem]) -> list[dict
             "emb": vec(i["embedding"]),
             "model": i["embed_model"],
             "meta": json.dumps(i["metadata"]),
+            "lang": i.get("lang") or detect_lang(i["content"]),
         }
         for i in items
     ]
@@ -130,8 +133,15 @@ class PgVectorStore:
         k: int,
         filter: dict[str, Any] | None = None,
         model: str | None = None,
+        lang: str | None = None,
     ) -> list[Hit]:
         extra, params = self._where(filter, model)
+        # Same configuration the index used for that language (see tsp_tsv in migration 0002).
+        query = (
+            "plainto_tsquery('simple', tsp_norm_devanagari(:t))"
+            if (lang or detect_lang(text_)) == "hi"
+            else "plainto_tsquery('english', :t)"
+        )
         async with self.db.session() as s:
             await scope(s, org_id)
             rows = await s.execute(
@@ -139,7 +149,7 @@ class PgVectorStore:
                     f"""
                     SELECT id, document_id, content, metadata,
                            ts_rank_cd(tsv, q) AS score
-                    FROM vector_chunks, plainto_tsquery('simple', :t) q
+                    FROM vector_chunks, {query} q
                     WHERE org_id = :o AND collection_id = :c AND tsv @@ q{extra}
                     ORDER BY score DESC LIMIT :k
                     """

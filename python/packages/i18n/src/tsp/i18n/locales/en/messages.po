@@ -1,0 +1,22 @@
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Language: en\n"
+
+msgid "newsletter.subject"
+msgstr "This week: {count} new recipes"
+
+msgid "newsletter.intro"
+msgstr "Here is what we published this week."
+
+msgid "newsletter.read_more"
+msgstr "Read the recipe"
+
+msgid "newsletter.unsubscribe"
+msgstr "Unsubscribe"
+
+msgid "share.recipe_by"
+msgstr "A recipe by {author}"
+
+msgid "ai_image.label"
+msgstr "AI-generated illustration"
