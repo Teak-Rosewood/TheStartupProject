@@ -3,6 +3,7 @@ Format: [Keep a Changelog](https://keepachangelog.com). Versioning: [SemVer](htt
 
 ## Unreleased
 ### Added
+- `tsp.crawl` (8b): safe website fetching, sources and pages, plan/fetch/refresh jobs, API, optional browser render worker with its own job queue (`tsp.jobs` queue column), CDK `CrawlConfig`.
 - `tsp.ai`: multi-provider LLM client, router, verified model catalog, OpenAI-compatible server.
 - AWS backend stack: `tsp.infra`, `tsp.server`, `tsp.auth`, `tsp.db`, `tsp.cache`, `tsp.nosql`, CI/CD workflows, runbooks (`docs/aws`).
 - Legal templates and startup guides (`docs/legal`, `docs/startup`).
