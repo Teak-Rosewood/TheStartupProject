@@ -1,0 +1,5 @@
+{% extends "base.html" %}{% block subject %}We received your message ({{ reference }}){% endblock %}
+{% block body %}<p>Hello {{ name }},</p>
+<p>Thank you for writing to us. We have received your complaint and given it the reference <strong>{{ reference }}</strong>. Please quote it if you contact us again.</p>
+<p>A person will acknowledge it within {{ ack_hours }} hours.</p>
+<p>If you did not send this message, you can ignore this email.</p>{% endblock %}

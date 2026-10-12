@@ -38,7 +38,9 @@ def upgrade() -> None:
         _id(),
         sa.Column("seq", sa.BigInteger, sa.Identity(), nullable=False, unique=True),
         sa.Column("org_id", sa.Text, nullable=False),
-        sa.Column("item_id", UUID(as_uuid=True), sa.ForeignKey("cms_items.id", ondelete="SET NULL")),
+        sa.Column(
+            "item_id", UUID(as_uuid=True), sa.ForeignKey("cms_items.id", ondelete="SET NULL")
+        ),
         sa.Column("complainant_name", sa.Text, nullable=False),
         sa.Column("email", sa.Text, nullable=False),
         sa.Column("category", sa.Text, nullable=False),

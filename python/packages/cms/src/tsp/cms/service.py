@@ -68,7 +68,7 @@ class CmsService:
         clock: Callable[[], datetime] = _utcnow,
         allow_self_approval: bool = False,
         lifecycle: LifecycleConfig | None = None,
-        notify_review_due: Callable[[Item, datetime], Awaitable[None]] | None = None,
+        notify_review_due: Callable[[AsyncSession, Item, datetime], Awaitable[None]] | None = None,
     ):
         self.s = session
         self.checks = checks or default_registry()
@@ -569,7 +569,7 @@ class CmsService:
                 review.notified_at = now
                 if self.notify_review_due:
                     await self.notify_review_due(
-                        item, self.lifecycle.freeze_deadline(item.type, review.due_at)
+                        self.s, item, self.lifecycle.freeze_deadline(item.type, review.due_at)
                     )
                 await self._audit(item, "review_due", system, due_at=review.due_at.isoformat())
                 notified.append(item.id)

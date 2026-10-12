@@ -17,7 +17,7 @@ async def db(tmp_path):
     (app / "versions").mkdir(parents=True)
     (app / "env.py").write_text("from tsp.db import run_alembic_env\nrun_alembic_env(None)\n")
     (app / "script.py.mako").write_text("")
-    await asyncio.to_thread(upgrade, URL, app, modules=["tsp.audit", "tsp.jobs", "tsp.cms"])
+    await asyncio.to_thread(upgrade, URL, app, modules=["tsp.audit", "tsp.jobs", "tsp.flags", "tsp.cms"])
     yield d
     await drop_all(d)
     await d.dispose()
