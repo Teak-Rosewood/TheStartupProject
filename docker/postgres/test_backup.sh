@@ -37,12 +37,13 @@ for i in $(seq 1 90); do
 done
 docker exec -u postgres $N-bk pgbackrest info | head -12
 
-psql -c "create table t(i int)" -c "insert into t select generate_series(1,100)"
+psql -c "create extension vector" -c "create table t(i int, v halfvec(3))" \
+  -c "insert into t select g, ('[' || g || ',0,1]')::halfvec from generate_series(1,100) g"
 psql -c "select pg_switch_wal()" >/dev/null
 sleep 3
 TARGET=$(psql -c "select to_char(now(),'YYYY-MM-DD HH24:MI:SS.US+00')")
 sleep 2
-psql -c "insert into t select generate_series(101,150)" -c "select pg_switch_wal()" >/dev/null
+psql -c "insert into t select g, ('[' || g || ',0,1]')::halfvec from generate_series(101,150) g" -c "select pg_switch_wal()" >/dev/null
 sleep 5
 echo "rows before restore: $(psql -c 'select count(*) from t')  target=$TARGET"
 
@@ -62,4 +63,7 @@ for i in $(seq 1 60); do docker exec -u postgres $N-restore psql -qAt -h /var/ru
 sleep 3
 COUNT=$(docker exec -u postgres $N-restore psql -qAt -h /var/run/postgresql -c "select count(*) from t")
 echo "rows after restore: $COUNT"
-[ "$COUNT" = 100 ] && echo "PASS: restored to the target time (100 rows; later 50 excluded)" || { echo "FAIL: expected 100"; docker logs $N-restore | tail -20; exit 1; }
+NEAR=$(docker exec -u postgres $N-restore psql -qAt -h /var/run/postgresql -c "select i from t order by v <=> '[7,0,1]' limit 1")
+echo "nearest vector to [7,0,1] after restore: $NEAR"
+[ "$NEAR" = 7 ] || { echo "FAIL: vector column did not survive the restore"; exit 1; }
+[ "$COUNT" = 100 ] && echo "PASS: restored to the target time (100 rows; later 50 excluded) and the vector column is searchable" || { echo "FAIL: expected 100"; docker logs $N-restore | tail -20; exit 1; }

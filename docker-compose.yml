@@ -1,7 +1,7 @@
 # Local services for integration tests: `docker compose up -d`
 services:
   postgres:
-    image: postgres:16
+    image: pgvector/pgvector:pg16
     environment: { POSTGRES_PASSWORD: test, POSTGRES_DB: test }
     ports: ["55432:5432"]
   valkey:
