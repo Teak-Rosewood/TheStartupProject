@@ -4,7 +4,10 @@ from tsp.ai.catalog import ModelResult, ProviderResult
 
 
 def test_from_env_reads_env_file(tmp_path, monkeypatch):
-    monkeypatch.delenv("GROQ_KEY", raising=False)
+    # load_env_file writes to os.environ directly; registering the variable with monkeypatch first
+    # makes pytest remove it afterwards so it cannot leak into other tests.
+    monkeypatch.setenv("GROQ_KEY", "placeholder")
+    monkeypatch.delenv("GROQ_KEY")
     env = tmp_path / ".env"
     env.write_text("# c\nGROQ_KEY='gsk_file'\n")
     client = LLMClient.from_env(env)

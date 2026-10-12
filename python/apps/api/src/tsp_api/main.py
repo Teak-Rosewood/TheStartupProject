@@ -41,7 +41,7 @@ from tsp.server import (
 from tsp.storage import LocalObjectStore, S3ObjectStore, UploadPolicy, Uploads
 from tsp.storage import build_router as storage_router
 
-from .ai import AiGateway
+from .ai import AiGateway, catalog_lifespan, register_catalog_jobs
 from .ai import build_router as build_ai_router
 from .billing import build_payments, plans_path, sync_plans_on_start
 from .growth import build_leads, optional_sub, set_first_touch
@@ -155,17 +155,22 @@ def build_app() -> FastAPI:
     accounts = Accounts(invite_hook=hooks.invite, user_created_hook=hooks.user_created)
     accounts.register_with_compliance(compliance)
     payments = build_payments(on_receipt=hooks.receipt, on_payment_failed=hooks.payment_failed)
+    llm = build_llm()
     registry = build_registry(notifier, compliance=compliance, payments=payments)
+    if llm is not None:
+        register_catalog_jobs(
+            registry, llm, free_only=os.environ.get("AI_VERIFY_FREE_ONLY", "1") == "1"
+        )
     flags = Flags()
     uploads = build_uploads(settings)
     uploads.register_with_compliance(compliance)
-    llm = build_llm()
     # Stage 0 runs jobs inside the API process (no memory for a second container); set
     # TSP_JOBS_INLINE=0 when you run `tsp-jobs worker` separately.
     inline = os.environ.get("TSP_JOBS_INLINE", "1") == "1"
     background: list[Any] = [worker_lifespan(registry)] if inline else []
     if llm is not None:
-        background.append(llm_lifespan(llm))
+        background.insert(0, llm_lifespan(llm))
+        background.append(catalog_lifespan(llm))
     app = create_app(settings, background=background)
     app.state.compliance, app.state.accounts, app.state.payments, app.state.notifier = (
         compliance,

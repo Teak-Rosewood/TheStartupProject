@@ -116,6 +116,27 @@ class LLMClient:
         """Get all routable models."""
         return self._router.get_models()
 
+    def use_catalog(self, catalog: ModelCatalog) -> int:
+        """Route only over the models that answered in ``catalog``; returns how many are routable.
+
+        Providers missing from the catalog end up with no models (they are not routed to).
+        """
+        total = 0
+        for platform in list(self._router._providers):
+            result = catalog.providers.get(platform)
+            models = [
+                ModelCandidate(
+                    platform=platform,
+                    model_id=m.id,
+                    display_name=m.id,
+                    avg_ttfb_ms=m.latency_ms or 0.0,
+                )
+                for m in (result.ok_models if result else [])
+            ]
+            self._router.set_models(platform, models)
+            total += len(models)
+        return total
+
     async def close(self) -> None:
         """Close all provider connections."""
         for provider in self._router._providers.values():

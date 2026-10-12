@@ -223,9 +223,19 @@ def test_events_and_referrals_through_the_real_app(client):
 def test_new_modules_are_mounted_in_the_real_app(client):
     assert client.get("/api/flags").json() == {}
     org = client.post("/api/orgs", json={"name": "Acme"}).json()["id"]
-    up = client.post(f"/api/orgs/{org}/files", json={"filename": "../a.png", "content_type": "image/png", "size": 100})
-    assert up.status_code == 201 and up.json()["upload"]["fields"]["key"].startswith(f"uploads/{org}/")
-    bad = client.post(f"/api/orgs/{org}/files", json={"filename": "x.exe", "content_type": "application/x-msdownload", "size": 100})
+    up = client.post(
+        f"/api/orgs/{org}/files",
+        json={"filename": "../a.png", "content_type": "image/png", "size": 100},
+    )
+    assert up.status_code == 201 and up.json()["upload"]["fields"]["key"].startswith(
+        f"uploads/{org}/"
+    )
+    bad = client.post(
+        f"/api/orgs/{org}/files",
+        json={"filename": "x.exe", "content_type": "application/x-msdownload", "size": 100},
+    )
     assert bad.status_code == 422 and bad.json()["error"]["type"] == "upload_rejected"
     assert client.get(f"/api/orgs/{org}/usage").json()["requests"] == 0
-    assert client.app_.state.flags is not None and not hasattr(client.app_.state, "ai_gateway")  # no model keys configured
+    assert client.app_.state.flags is not None and not hasattr(
+        client.app_.state, "ai_gateway"
+    )  # no model keys configured

@@ -162,6 +162,11 @@ class UserPool(Construct):
 
         self.issuer = f"https://cognito-idp.{region}.amazonaws.com/{self.pool.user_pool_id}"
         self.client_ids = f"{self.web.user_pool_client_id},{self.mobile.user_pool_client_id}"
+        self.hosted_login_url = (
+            f"https://{config.domain.auth}"
+            if a.custom_domain and config.domain.auth
+            else f"https://{domain_prefix}.auth.{region}.amazoncognito.com"
+        )
 
 
 STAFF_GROUPS = {

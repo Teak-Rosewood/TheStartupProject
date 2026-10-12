@@ -69,6 +69,9 @@ jobs:
           if [ -f js/packages/landing/package.json ]; then
             (cd js && npm ci && npm run build -w @tsp/landing && npm run verify -w @tsp/landing)
           fi
+          if [ -f js/packages/web-app/package.json ]; then
+            (cd js && npm ci && npm test -w @tsp/web-app && npm run build -w @tsp/web-app)
+          fi
 
       - name: image tags
         run: |
@@ -110,12 +113,22 @@ jobs:
         run: |
           DIR="${{ vars.FRONTEND_DIR || 'js/packages/landing/dist' }}"
           if [ -n "$DIR" ] && [ -d "$DIR" ]; then
+            if [ -d js/packages/web-app/dist ] && [ "$DIR" = "js/packages/landing/dist" ]; then
+              # The signed-in app lives under /app; its sign-in settings come from the deployed stack.
+              out() { aws cloudformation describe-stacks --stack-name tsp-prod-backend \
+                --query "Stacks[0].Outputs[?OutputKey=='$1'].OutputValue" --output text; }
+              rm -rf "$DIR/app" && cp -r js/packages/web-app/dist "$DIR/app"
+              jq -n --arg issuer "$(out UserPoolIssuer)" --arg clientId "$(out UserPoolWebClientId)" \
+                --arg hostedLoginUrl "$(out HostedLoginUrl)" \
+                '{issuer:$issuer,clientId:$clientId,hostedLoginUrl:$hostedLoginUrl,razorpayScript:"https://checkout.razorpay.com/v1/checkout.js"}' \
+                > "$DIR/app/config.json"
+            fi
             aws s3 sync "$DIR" "s3://tsp-prod-frontend-${{ vars.AWS_ACCOUNT_ID }}" --delete \
               --cache-control "public,max-age=31536000,immutable" --exclude index.html
             aws s3 cp "$DIR/index.html" "s3://tsp-prod-frontend-${{ vars.AWS_ACCOUNT_ID }}/index.html" --cache-control "no-cache"
             DIST=$(aws cloudformation describe-stacks --region us-east-1 --stack-name tsp-prod-edge \
               --query "Stacks[0].Outputs[?OutputKey=='DistributionId'].OutputValue" --output text)
-            aws cloudfront create-invalidation --distribution-id "$DIST" --paths "/index.html"
+            aws cloudfront create-invalidation --distribution-id "$DIST" --paths "/index.html" "/app/*"
           else
             echo "no frontend to publish"
           fi

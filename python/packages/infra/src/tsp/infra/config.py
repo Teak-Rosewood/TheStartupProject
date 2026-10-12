@@ -114,6 +114,25 @@ class EdgeConfig(BaseModel):
     csp: str | None = None
 
 
+class UploadsConfig(BaseModel):
+    """Customer file uploads straight to a private S3 bucket (docs/modules/product-ops.md)."""
+
+    enabled: bool = False
+    max_mb: int = Field(default=10, ge=1, le=5000)
+    org_quota_mb: int = Field(default=1024, ge=1)
+
+
+class AiConfig(BaseModel):
+    """The AI gateway. Provider keys live in one Secrets Manager secret (docs/aws/16-ai-gateway.md);
+    list here which of its fields to inject, named like the provider's environment variable."""
+
+    provider_keys: list[str] = []  # e.g. ["GROQ_KEY", "OPENROUTER_KEY"]
+    verify_free_only: bool = True  # the nightly probe only calls models known to be free
+    credits_per_1k_in: float = Field(default=1.0, ge=0)
+    credits_per_1k_out: float = Field(default=3.0, ge=0)
+    default_rpm: int = Field(default=20, ge=1)
+
+
 class GithubConfig(BaseModel):
     owner: str
     repo: str
@@ -137,6 +156,8 @@ class EnvConfig(BaseModel):
     payments: PaymentsConfig = PaymentsConfig()
     notify: NotifyConfig = NotifyConfig()
     growth: GrowthConfig = GrowthConfig()
+    uploads: UploadsConfig = UploadsConfig()
+    ai: AiConfig = AiConfig()
     edge: EdgeConfig = EdgeConfig()
     github: GithubConfig
     alarm_email: str

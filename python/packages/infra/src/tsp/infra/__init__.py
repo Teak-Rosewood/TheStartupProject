@@ -2,6 +2,7 @@
 
 from .config import (
     AdminConfig,
+    AiConfig,
     AuthConfig,
     CacheConfig,
     ComputeConfig,
@@ -14,11 +15,14 @@ from .config import (
     NotifyConfig,
     PaymentsConfig,
     SellerConfig,
+    UploadsConfig,
 )
 from .nag import enable_checks
 from .stacks import AppStage, new_app
 
 __all__ = [
+    "AiConfig",
+    "UploadsConfig",
     "EdgeConfig",
     "GrowthConfig",
     "NotifyConfig",

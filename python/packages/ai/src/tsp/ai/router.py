@@ -179,6 +179,13 @@ class LLMRouter:
             if platform not in self._keys:
                 self._keys[platform] = []
 
+    def set_models(self, platform: str, models: list[ModelCandidate]) -> None:
+        """Replace one provider's routable models (used when a fresh catalog arrives at runtime)."""
+        with self._lock:
+            if platform not in self._providers:
+                raise KeyError(platform)
+            self._models[platform] = list(models)
+
     def add_key(
         self,
         platform: str,

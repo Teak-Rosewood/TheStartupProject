@@ -265,3 +265,76 @@ async def _chain(
         yield first
         async for c in rest:
             yield c
+
+
+# -- model catalog: probe providers on a schedule, remember the result across restarts -------------------
+
+
+async def load_catalog(db: Any) -> Any:
+    """The last saved catalog, or None."""
+    from sqlalchemy import text
+    from tsp.ai import ModelCatalog
+
+    async with db.session() as s:
+        row = (await s.execute(text("SELECT data FROM ai_catalog WHERE id = 1"))).first()
+    return ModelCatalog.model_validate(row[0]) if row else None
+
+
+async def save_catalog(db: Any, catalog: Any) -> None:
+    import json
+
+    from sqlalchemy import text
+
+    async with db.session() as s:
+        await s.execute(
+            text(
+                "INSERT INTO ai_catalog (id, data) VALUES (1, CAST(:d AS jsonb)) "
+                "ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data, updated_at = now()"
+            ),
+            {"d": json.dumps(json.loads(catalog.model_dump_json()))},
+        )
+
+
+async def refresh_catalog(
+    client: LLMClient, db: Any, *, free_only: bool = True, max_models: int | None = 30
+) -> int:
+    """Probe every provider, save the result and route over it. Returns how many models are routable.
+
+    ``free_only`` keeps the probes from spending money on paid models; set AI_VERIFY_FREE_ONLY=0 to probe all.
+    """
+    from tsp.ai.discovery import verify
+
+    catalog = await verify(client, free_only=free_only, max_models=max_models)
+    await save_catalog(db, catalog)
+    return client.use_catalog(catalog)
+
+
+def register_catalog_jobs(registry: Any, client: LLMClient, *, free_only: bool = True) -> None:
+    @registry.job("ai.refresh_catalog")
+    async def refresh(ctx: Any, payload: dict[str, Any]) -> None:
+        n = await refresh_catalog(client, ctx.database, free_only=free_only)
+        log.info("model catalog refreshed: %s routable models", n)
+
+    registry.schedule("ai-catalog", "daily 04:10", "ai.refresh_catalog")
+
+
+def catalog_lifespan(client: LLMClient) -> Callable[[Any], Any]:
+    """On start, route over the saved catalog; with none saved, queue a first probe straight away
+    (otherwise a fresh deployment would answer 'no models' until the nightly job)."""
+    from contextlib import asynccontextmanager
+
+    from tsp.jobs import enqueue
+
+    @asynccontextmanager
+    async def run(app: Any) -> AsyncIterator[None]:
+        db = getattr(app.state, "db", None)
+        if db is not None:
+            saved = await load_catalog(db)
+            if saved is not None:
+                log.info("routing over %s saved models", client.use_catalog(saved))
+            else:
+                async with db.session() as s:
+                    await enqueue(s, "ai.refresh_catalog", unique_key="ai-catalog-first-run")
+        yield
+
+    return run

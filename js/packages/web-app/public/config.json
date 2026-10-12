@@ -1,0 +1,6 @@
+{
+  "issuer": "https://cognito-idp.ap-south-1.amazonaws.com/POOL_ID",
+  "clientId": "WEB_CLIENT_ID",
+  "hostedLoginUrl": "https://tsp-prod.auth.ap-south-1.amazoncognito.com",
+  "razorpayScript": "https://checkout.razorpay.com/v1/checkout.js"
+}

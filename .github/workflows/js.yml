@@ -33,3 +33,18 @@ jobs:
       - name: Lighthouse (performance, accessibility, best practices, SEO)
         run: npx --yes @lhci/cli@0.14.0 autorun
         working-directory: js/packages/landing
+
+  web-app:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: js/package-lock.json
+      - run: npm ci
+        working-directory: js
+      - name: typecheck, test, build
+        run: npm run build -w @tsp/web-app && npm test -w @tsp/web-app
+        working-directory: js

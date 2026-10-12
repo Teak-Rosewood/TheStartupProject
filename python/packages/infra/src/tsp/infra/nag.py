@@ -83,9 +83,9 @@ def acknowledge_known(
         f"IAM5[Resource::arn:<AWS::Partition>:autoscaling:{env.region}:{env.account}:autoScalingGroup:*:autoScalingGroupName/<{asg_logical_id}>]"
     ] = "CDK-managed ECS drain hook may complete lifecycle actions for this group."
     for bucket_id in bucket_logical_ids:
-        for suffix in ("/*", "/exports/*", "/invoices/*"):
+        for suffix in ("/*", "/exports/*", "/invoices/*", "/uploads/*"):
             rules[f"IAM5[Resource::<{bucket_id}.Arn>{suffix}]"] = (
-                "Object-level access to this environment's own bucket (backups or personal-data exports)."
+                "Object-level access to this environment's own bucket (backups, personal-data exports or customer uploads)."
             )
     cdk.Validations.of(scope).acknowledge(
         *(cdk.Acknowledgment(id=_P + k, reason=v) for k, v in rules.items())

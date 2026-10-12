@@ -632,3 +632,69 @@ def test_edge_function_serves_directory_pages_and_the_app_fallback():
     ]
     assert "'/index.html'" in fn and "/app/index.html" in fn and "/api/" in fn
     assert "uri.indexOf('.') !== -1" in fn  # files with an extension are served as they are
+
+
+# -- uploads and the AI gateway ----------------------------------------------------------------
+
+
+def test_uploads_are_opt_in_private_and_cors_limited_to_the_site():
+    from tsp.infra import UploadsConfig
+
+    assert "UPLOAD_BUCKET" not in json.dumps(backend().to_json())
+    t = backend(uploads=UploadsConfig(enabled=True, max_mb=25, org_quota_mb=2048))
+    buckets = [
+        r
+        for r in t.find_resources("AWS::S3::Bucket").values()
+        if "CorsConfiguration" in r["Properties"]
+    ]
+    assert len(buckets) == 1 and buckets[0]["DeletionPolicy"] == "Retain"
+    rule = buckets[0]["Properties"]["CorsConfiguration"]["CorsRules"][0]
+    assert rule["AllowedOrigins"] == ["https://app.example.com"] and set(
+        rule["AllowedMethods"]
+    ) == {"POST", "GET"}
+    assert buckets[0]["Properties"]["PublicAccessBlockConfiguration"]["BlockPublicAcls"] is True
+    api = next(
+        c
+        for r in t.find_resources("AWS::ECS::TaskDefinition").values()
+        for c in r["Properties"]["ContainerDefinitions"]
+        if any(e["Name"] == "UPLOAD_MAX_MB" for e in c.get("Environment", []))
+    )
+    assert {e["Name"]: e.get("Value") for e in api["Environment"]}["UPLOAD_ORG_QUOTA_MB"] == "2048"
+    blob = json.dumps(t.find_resources("AWS::IAM::Policy"))
+    assert "s3:DeleteObject" in blob and "uploads/*" in blob
+
+
+def test_ai_provider_keys_are_injected_from_secrets_manager_by_name():
+    from tsp.infra import AiConfig
+
+    t = backend(ai=AiConfig(provider_keys=["GROQ_KEY", "OPENROUTER_KEY"], credits_per_1k_out=5))
+    api = next(
+        c
+        for r in t.find_resources("AWS::ECS::TaskDefinition").values()
+        for c in r["Properties"]["ContainerDefinitions"]
+        if any(e["Name"] == "AI_CREDITS_PER_1K_OUT" for e in c.get("Environment", []))
+    )
+    env = {e["Name"]: e.get("Value") for e in api["Environment"]}
+    assert env["AI_CREDITS_PER_1K_OUT"] == "5.0" and env["AI_VERIFY_FREE_ONLY"] == "1"
+    assert {"GROQ_KEY", "OPENROUTER_KEY"} <= {s["Name"] for s in api["Secrets"]}
+    assert "GROQ_KEY" not in env
+
+
+def test_stack_exposes_what_the_web_app_needs_to_sign_in():
+    out = backend().to_json()["Outputs"]
+    assert {"UserPoolWebClientId", "HostedLoginUrl", "UserPoolIssuer"} <= set(out)
+
+
+def test_uploads_and_ai_modes_pass_security_checks():
+    from tsp.infra import AiConfig, UploadsConfig
+
+    app = new_app()
+    AppStage(
+        app,
+        "t",
+        config=make_config(
+            uploads=UploadsConfig(enabled=True), ai=AiConfig(provider_keys=["GROQ_KEY"])
+        ),
+    )
+    enable_checks(app)
+    app.synth()

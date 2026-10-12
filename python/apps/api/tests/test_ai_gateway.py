@@ -298,3 +298,49 @@ def test_models_lists_only_enabled_ones(ctx):
     got = ctx.get("/api/v1/models").json()
     assert got["data"] == [{"id": "llama-3", "object": "model", "owned_by": "groq"}]
     assert ctx.get("/api/v1/models", headers={"Authorization": "Bearer bad"}).status_code == 401
+
+
+def test_catalog_is_saved_loaded_and_applied(ctx):
+    from tsp.ai import LLMClient, ModelCatalog, Status
+    from tsp.ai.catalog import ModelResult, ProviderResult
+    from tsp.ai.providers.base import BaseProvider
+    from tsp_api.ai import load_catalog, save_catalog
+
+    class Stub(BaseProvider):
+        platform, name = "stub", "Stub"
+
+        async def chat_completion(self, *a, **k):
+            return {"choices": [{"message": {"role": "assistant", "content": "ok"}}]}
+
+        def stream_chat_completion(self, *a, **k):
+            raise NotImplementedError
+
+        async def validate_key(self, k):
+            return True
+
+        async def list_models(self, k):
+            return [{"id": "good-model"}, {"id": "bad-model"}]
+
+    async def go():
+        d = Database(DB)
+        c = LLMClient()
+        c._router.add_provider("stub", Stub())
+        c._router.add_key("stub", "k")
+        assert await load_catalog(d) is None  # nothing saved yet
+        n = await __import__("tsp_api.ai", fromlist=["refresh_catalog"]).refresh_catalog(
+            c, d, free_only=False
+        )
+        saved = await load_catalog(d)
+        fresh = LLMClient()  # a restarted process
+        fresh._router.add_provider("stub", Stub())
+        fresh._router.add_key("stub", "k")
+        applied = fresh.use_catalog(saved)
+        await d.dispose()
+        return n, saved, applied, [m["model_id"] for m in fresh.get_models()]
+
+    n, saved, applied, ids = asyncio.run(go())
+    assert (
+        n == 2 and applied == 2 and sorted(ids) == ["bad-model", "good-model"]
+    )  # both answered the probe
+    assert isinstance(saved, ModelCatalog) and saved.providers["stub"].key_status is Status.OK
+    _ = (ModelResult, ProviderResult, save_catalog)

@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from .models import Referral, ReferralCode
 
-_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"  # no 0/O/1/I: codes get read aloud and retyped
+_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"  # no 0/O/1/I/L: codes get read aloud and retyped
 
 
 async def code_for(session: AsyncSession, owner_sub: str) -> str:
