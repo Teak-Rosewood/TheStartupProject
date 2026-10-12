@@ -111,7 +111,7 @@ async def fake_embedder(texts, model, kind):
 def make_service(db, site):
     """Build a CrawlService (and a job registry wired for both modules) over the fake site."""
 
-    def build(*, limits=None, resolver=None, settings=None):
+    def build(*, limits=None, resolver=None, settings=None, render_remote=False):
         async def resolve(host):
             return ["93.184.216.34"]
 
@@ -136,6 +136,7 @@ def make_service(db, site):
             vector, http, http, RobotsCache(cache, fetch_text), cache, db,
             settings or CrawlSettings(rps=1000), limits,
         )  # fmt: skip
+        svc.render_remote = render_remote
         registry = JobRegistry()
         from tsp.crawl import register_jobs
 

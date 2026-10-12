@@ -26,6 +26,11 @@ def main(argv: list[str] | None = None) -> int:
     )
     w.add_argument("--url", default=os.environ.get("DATABASE_URL"))
     w.add_argument("--concurrency", type=int, default=4)
+    w.add_argument(
+        "--queue",
+        action="append",
+        help="queue to run (repeatable; default: the default queue)",
+    )
     args = p.parse_args(argv)
     if not args.url or not args.registry:
         print(
@@ -43,7 +48,9 @@ def main(argv: list[str] | None = None) -> int:
     async def go() -> None:
         db = Database(args.url)
         try:
-            await Worker(registry, db, concurrency=args.concurrency).run_forever()
+            await Worker(
+                registry, db, concurrency=args.concurrency, queues=args.queue or ["default"]
+            ).run_forever()
         finally:
             await db.dispose()
 

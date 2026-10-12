@@ -16,6 +16,9 @@ class Job(Base):
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     name: Mapped[str] = mapped_column(Text)
+    queue: Mapped[str] = mapped_column(
+        Text, server_default="default"
+    )  # workers claim only the queues they were started for
     payload: Mapped[dict[str, Any]] = mapped_column(JSONB, server_default="{}")
     status: Mapped[str] = mapped_column(
         Text, server_default="queued"
@@ -30,7 +33,10 @@ class Job(Base):
     created_at: Mapped[datetime] = mapped_column(_TS, server_default=func.now())
     finished_at: Mapped[datetime | None] = mapped_column(_TS)
 
-    __table_args__ = (Index("ix_jobs_status_run_at", "status", "run_at"),)
+    __table_args__ = (
+        Index("ix_jobs_status_run_at", "status", "run_at"),
+        Index("ix_jobs_queue_status_run_at", "queue", "status", "run_at"),
+    )
 
 
 class CronJob(Base):

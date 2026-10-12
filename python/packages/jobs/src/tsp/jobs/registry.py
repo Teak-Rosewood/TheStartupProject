@@ -56,17 +56,19 @@ async def enqueue(
     run_at: datetime | None = None,
     unique_key: str | None = None,
     max_attempts: int = 5,
+    queue: str = "default",
 ) -> int | None:
     """Queue a job in the caller's transaction (the job exists only if the surrounding change commits).
 
-    With ``unique_key`` a second enqueue of the same key is ignored and returns None.
+    With ``unique_key`` a second enqueue of the same key is ignored and returns None. ``queue``
+    picks which workers may run the job (see ``Worker(queues=...)``).
     """
     import json
 
     row = await session.execute(
         text(
-            "INSERT INTO jobs (name, payload, run_at, max_attempts, unique_key) "
-            "VALUES (:n, CAST(:p AS jsonb), COALESCE(:r, now()), :m, :u) "
+            "INSERT INTO jobs (name, payload, run_at, max_attempts, unique_key, queue) "
+            "VALUES (:n, CAST(:p AS jsonb), COALESCE(:r, now()), :m, :u, :q) "
             "ON CONFLICT (unique_key) DO NOTHING RETURNING id"
         ),
         {
@@ -75,6 +77,7 @@ async def enqueue(
             "r": run_at,
             "m": max_attempts,
             "u": unique_key,
+            "q": queue,
         },
     )
     found = row.first()
