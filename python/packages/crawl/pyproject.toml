@@ -9,7 +9,19 @@ description = "Safe, polite web fetching: SSRF-guarded HTTP, robots.txt, sitemap
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
-dependencies = ["httpx>=0.24", "trafilatura>=1.12", "protego>=0.3", "tsp-cache"]
+dependencies = [
+  "httpx>=0.24",
+  "trafilatura>=1.12",
+  "protego>=0.3",
+  "sqlalchemy[asyncio]>=2",
+  "fastapi>=0.110",
+  "tsp-cache",
+  "tsp-db",
+  "tsp-audit",
+  "tsp-jobs",
+  "tsp-metering",
+  "tsp-vector",
+]
 
 [project.optional-dependencies]
 browser = ["crawl4ai>=0.4"]
@@ -18,6 +30,11 @@ scrapy = ["scrapy>=2.11"]
 
 [tool.uv.sources]
 tsp-cache = { workspace = true }
+tsp-db = { workspace = true }
+tsp-audit = { workspace = true }
+tsp-jobs = { workspace = true }
+tsp-metering = { workspace = true }
+tsp-vector = { workspace = true }
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/tsp"]

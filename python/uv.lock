@@ -7869,10 +7869,18 @@ name = "tsp-crawl"
 version = "0.1.0"
 source = { editable = "packages/crawl" }
 dependencies = [
+    { name = "fastapi" },
     { name = "httpx" },
     { name = "protego" },
+    { name = "sqlalchemy", version = "2.0.54", source = { registry = "https://pypi.org/simple" }, extra = ["asyncio"], marker = "python_full_version < '3.11'" },
+    { name = "sqlalchemy", version = "2.1.4", source = { registry = "https://pypi.org/simple" }, extra = ["asyncio"], marker = "python_full_version >= '3.11'" },
     { name = "trafilatura" },
+    { name = "tsp-audit" },
     { name = "tsp-cache" },
+    { name = "tsp-db" },
+    { name = "tsp-jobs" },
+    { name = "tsp-metering" },
+    { name = "tsp-vector" },
 ]
 
 [package.optional-dependencies]
@@ -7890,11 +7898,18 @@ scrapy = [
 requires-dist = [
     { name = "crawl4ai", marker = "extra == 'browser'", specifier = ">=0.4" },
     { name = "docling", marker = "extra == 'pdf'", specifier = ">=2" },
+    { name = "fastapi", specifier = ">=0.110" },
     { name = "httpx", specifier = ">=0.24" },
     { name = "protego", specifier = ">=0.3" },
     { name = "scrapy", marker = "extra == 'scrapy'", specifier = ">=2.11" },
+    { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2" },
     { name = "trafilatura", specifier = ">=1.12" },
+    { name = "tsp-audit", editable = "packages/audit" },
     { name = "tsp-cache", editable = "packages/cache" },
+    { name = "tsp-db", editable = "packages/db" },
+    { name = "tsp-jobs", editable = "packages/jobs" },
+    { name = "tsp-metering", editable = "packages/metering" },
+    { name = "tsp-vector", editable = "packages/vector" },
 ]
 provides-extras = ["browser", "pdf", "scrapy"]
 
