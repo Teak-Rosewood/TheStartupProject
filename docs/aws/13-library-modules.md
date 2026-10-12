@@ -21,6 +21,7 @@
 | `tsp-metering` (`tsp.metering`) | runtime | usage records and token-to-credit pricing |
 | `tsp-crawl` (`tsp.crawl`) | runtime | SSRF-safe HTTP fetching, robots.txt, sitemaps, per-domain limits, Markdown extraction; see [web ingestion plan](../plans/08b-crawl.md) |
 | `tsp-sources` (`tsp.sources`) | runtime | external data sources and connectors with strategy fallback, cursors and health checks; see [sources](../modules/sources.md) |
+| `tsp-trends` (`tsp.trends`) | runtime | interest signals scored daily into an editor's candidate list; see [trends](../modules/trends.md) |
 | `tsp-ai` (`tsp.ai`) | runtime | multi-provider LLM client and server (already built) |
 
 Runtime modules take explicit URLs and parameters and know nothing about each other, so you can use any one alone. Only `tsp.server` reads environment settings and wires the others together. The deployable sample service lives in `python/apps/api`, and the CDK app in `python/apps/infra`.
