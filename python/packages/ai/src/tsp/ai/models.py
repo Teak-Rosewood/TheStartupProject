@@ -85,3 +85,21 @@ class ModelInfo(BaseModel):
     context_window: int = 128000
     available: bool = True
     execution_status: str = "ready"  # ready, needsKey, exhausted
+
+
+class EmbeddingItem(BaseModel):
+    index: int
+    embedding: list[float]
+
+
+class EmbeddingResponse(BaseModel):
+    object: str = "list"
+    model: str
+    provider: str
+    dims: int
+    data: list[EmbeddingItem]
+    usage: Usage = Field(default_factory=Usage)
+
+
+class EmbeddingDimensionError(ValueError):
+    """A provider returned vectors of a different length than requested or recorded in the catalog."""

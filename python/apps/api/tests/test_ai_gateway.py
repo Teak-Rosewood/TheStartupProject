@@ -8,13 +8,15 @@ from api_support import ALL_TABLES
 from fastapi.testclient import TestClient
 from sqlalchemy import select, text
 from tsp.accounts import Accounts
-from tsp.ai import ProviderHttpError
+from tsp.ai import EmbeddingDimensionError, ProviderHttpError
 from tsp.ai.models import (
     ChatCompletionChunk,
     ChatCompletionResponse,
     Choice,
     ChoiceMessage,
     DeltaMessage,
+    EmbeddingItem,
+    EmbeddingResponse,
     StreamChoice,
     Usage,
 )
@@ -66,9 +68,27 @@ class FakeChat:
             )
 
 
+class FakeEmbeddings:
+    def __init__(self):
+        self.calls, self.fail, self.tokens = [], None, 500
+
+    async def create(self, model, input, *, dims=None, input_type="document", batch_size=96):
+        self.calls.append((model, input, dims, input_type))
+        if self.fail:
+            raise self.fail
+        return EmbeddingResponse(
+            model=model,
+            provider="openai",
+            dims=2,
+            data=[EmbeddingItem(index=i, embedding=[0.5, 0.25]) for i, _ in enumerate(input)],
+            usage=Usage(prompt_tokens=self.tokens, total_tokens=self.tokens),
+        )
+
+
 class FakeLLM:
     def __init__(self):
         self.chat = FakeChat()
+        self.embeddings = FakeEmbeddings()
 
     def get_models(self):
         return [
@@ -115,13 +135,14 @@ def ctx():
             org = await accounts.create_org(s, OWNER, "Acme")
             good, raw_good = await accounts.create_api_key(s, org.id, OWNER, "app", ["chat"])
             _, raw_noscope = await accounts.create_api_key(s, org.id, OWNER, "readonly", [])
+            _, raw_embed = await accounts.create_api_key(s, org.id, OWNER, "search", ["embed"])
             await pay.grant_credits(s, org.id, 100, reason="seed", ref="seed")
         await d.dispose()
-        return org.id, raw_good, raw_noscope
+        return org.id, raw_good, raw_noscope, raw_embed
 
-    org_id, key, noscope = asyncio.run(seed())
+    org_id, key, noscope, embed_key = asyncio.run(seed())
     with TestClient(app) as c:
-        c.llm, c.gw, c.pay, c.flags, c.org, c.key, c.noscope = (
+        c.llm, c.gw, c.pay, c.flags, c.org, c.key, c.noscope, c.embed_key = (
             llm,
             gw,
             pay,
@@ -129,6 +150,7 @@ def ctx():
             org_id,
             key,
             noscope,
+            embed_key,
         )
         c.headers["Authorization"] = f"Bearer {key}"
         yield c
@@ -344,3 +366,116 @@ def test_catalog_is_saved_loaded_and_applied(ctx):
     )  # both answered the probe
     assert isinstance(saved, ModelCatalog) and saved.providers["stub"].key_status is Status.OK
     _ = (ModelResult, ProviderResult, save_catalog)
+
+
+# -- embeddings ---------------------------------------------------------------------------------------
+
+EMBED = {"model": "text-embedding-3-small", "input": ["alpha", "beta"]}
+
+
+def embed_headers(c):
+    return {"Authorization": f"Bearer {c.embed_key}"}
+
+
+def test_embeddings_need_the_embed_scope(ctx):
+    r = ctx.post("/api/v1/embeddings", json=EMBED)  # the default key only has "chat"
+    assert r.status_code == 403 and "'embed'" in r.json()["error"]["message"]
+    assert (
+        ctx.post(
+            "/api/v1/embeddings", json=EMBED, headers={"Authorization": "Bearer x"}
+        ).status_code
+        == 401
+    )
+    assert ctx.llm.embeddings.calls == []
+    # and an embed key cannot chat
+    chat = ctx.post("/api/v1/chat/completions", json=BODY, headers=embed_headers(ctx))
+    assert chat.status_code == 403
+
+
+def test_embeddings_are_returned_in_openai_shape_priced_and_metered(ctx):
+    r = ctx.post("/api/v1/embeddings", json={**EMBED, "dimensions": 2}, headers=embed_headers(ctx))
+    assert r.status_code == 200
+    body = r.json()
+    assert body["object"] == "list" and body["model"] == "text-embedding-3-small"
+    assert [d["index"] for d in body["data"]] == [0, 1] and body["data"][0]["embedding"] == [
+        0.5,
+        0.25,
+    ]
+    assert body["usage"] == {"prompt_tokens": 500, "total_tokens": 500}
+    assert ctx.llm.embeddings.calls == [
+        ("text-embedding-3-small", ["alpha", "beta"], 2, "document")
+    ]
+    assert r.headers["x-credits-charged"] == "1"  # 500 tokens * 1/1k, rounded up
+    bal, rows = state(ctx)
+    rec = rows[0]
+    assert bal == 99 and len(rows) == 1
+    assert (rec.kind, rec.model, rec.provider, rec.units_in, rec.units_out, rec.status) == (
+        "ai.embed",
+        "text-embedding-3-small",
+        "openai",
+        500,
+        0,
+        "ok",
+    )
+
+
+def test_a_single_string_input_is_accepted_and_missing_usage_is_estimated(ctx):
+    ctx.llm.embeddings.tokens = 0
+    r = ctx.post(
+        "/api/v1/embeddings",
+        json={"model": "m", "input": "x" * 4000, "input_type": "query"},
+        headers=embed_headers(ctx),
+    )
+    assert r.status_code == 200 and r.json()["usage"]["total_tokens"] == 1000
+    assert ctx.llm.embeddings.calls[0][3] == "query"
+
+
+def test_embeddings_validate_the_request(ctx):
+    h = embed_headers(ctx)
+    assert (
+        ctx.post("/api/v1/embeddings", json={"input": ["a"]}, headers=h).status_code == 422
+    )  # no model
+    assert (
+        ctx.post("/api/v1/embeddings", json={"model": "m", "input": []}, headers=h).status_code
+        == 400
+    )
+    too_many = {"model": "m", "input": ["a"] * 257}
+    assert ctx.post("/api/v1/embeddings", json=too_many, headers=h).status_code == 422
+    assert ctx.llm.embeddings.calls == []
+
+
+def test_embeddings_share_the_kill_switch_credit_check_and_rate_limit(ctx):
+    h = embed_headers(ctx)
+    codes = [ctx.post("/api/v1/embeddings", json=EMBED, headers=h).status_code for _ in range(4)]
+    assert codes == [200, 200, 200, 429]  # default_rpm=3, shared with chat
+
+    left = state(ctx)[0]
+
+    async def drain():
+        d = Database(DB)
+        async with d.session() as s:
+            await ctx.pay.spend_credits(s, ctx.org, left, reason="drain")
+        await d.dispose()
+
+    asyncio.run(drain())
+    ctx.llm.embeddings.calls.clear()
+    r = ctx.post("/api/v1/embeddings", json=EMBED, headers=h)
+    assert r.status_code == 402 and r.json()["error"]["type"] == "insufficient_credits"
+    assert ctx.llm.embeddings.calls == []
+
+
+def test_embedding_failures_are_returned_recorded_and_not_charged(ctx):
+    h = embed_headers(ctx)
+    ctx.llm.embeddings.fail = ProviderHttpError(
+        "no provider serves embedding model 'm'", status=404
+    )
+    r = ctx.post("/api/v1/embeddings", json=EMBED, headers=h)
+    assert r.status_code == 404 and r.json()["error"]["type"] == "upstream_error"
+    ctx.llm.embeddings.fail = EmbeddingDimensionError("returned 3 dimensions, expected 4")
+    r = ctx.post("/api/v1/embeddings", json=EMBED, headers=h)
+    assert r.status_code == 502 and "dimensions" in r.json()["error"]["message"]
+    bal, rows = state(ctx)
+    assert (
+        bal == 100
+        and [(x.kind, x.status, x.credits) for x in rows] == [("ai.embed", "error", 0)] * 2
+    )

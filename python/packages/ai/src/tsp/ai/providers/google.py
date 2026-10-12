@@ -156,6 +156,41 @@ class GoogleProvider(BaseProvider):
             },
         }
 
+    async def embedding(
+        self,
+        api_key: str,
+        input: str | list[str],
+        model_id: str,
+        options: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """``batchEmbedContents``. Options: ``input_type``, ``dims`` (``outputDimensionality``)."""
+        options = options or {}
+        texts = [input] if isinstance(input, str) else input
+        task = "RETRIEVAL_QUERY" if options.get("input_type") == "query" else "RETRIEVAL_DOCUMENT"
+        requests = []
+        for text in texts:
+            req: dict[str, Any] = {
+                "model": f"models/{model_id}",
+                "content": {"parts": [{"text": text}]},
+                "taskType": task,
+            }
+            if options.get("dims"):
+                req["outputDimensionality"] = options["dims"]
+            requests.append(req)
+        try:
+            resp = await self._http.post(
+                f"/models/{model_id}:batchEmbedContents",
+                json={"requests": requests},
+                headers={"x-goog-api-key": api_key},
+            )
+        except httpx.RequestError as e:
+            raise ProviderHttpError(f"Request failed: {e}", status=500)
+        if resp.status_code >= 400:
+            raise build_error(resp.status_code, resp.text[:300])
+        vectors = [e.get("values", []) for e in resp.json().get("embeddings", [])]
+        # The API reports no token usage; callers fall back to their own estimate.
+        return {"data": [{"index": i, "embedding": v} for i, v in enumerate(vectors)], "usage": {}}
+
     async def validate_key(self, api_key: str) -> bool | dict[str, Any]:
         try:
             resp = await self._http.get(
@@ -173,7 +208,7 @@ class GoogleProvider(BaseProvider):
         return [
             {"id": m["name"].removeprefix("models/"), **m}
             for m in resp.json().get("models", [])
-            if "generateContent" in m.get("supportedGenerationMethods", [])
+            if {"generateContent", "embedContent"} & set(m.get("supportedGenerationMethods", []))
         ]
 
     async def close(self):
