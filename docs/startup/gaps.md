@@ -1,6 +1,6 @@
 # What this kit covers, and what is missing
 
-Status as of the last update to this file. "Planned" items are scheduled in the order listed in the roadmap below.
+Status as of the last update to this file. "Planned" items are scheduled in the order listed in the [roadmap](../roadmap.md). A full review of what is missing is in the [October 2026 project review](../review-2026-10.md).
 
 | Area | Status | Where |
 |---|---|---|
@@ -16,6 +16,7 @@ Status as of the last update to this file. "Planned" items are scheduled in the 
 | Background jobs, email, push, SMS, in-app | built and tested; needs SES setup and a live send | `tsp.jobs`, `tsp.notify`, [docs](../modules/jobs-notify.md) |
 | Landing page, SEO, waitlist, events, attribution, referrals, metrics | built and verified; needs your copy, a real OG image and Lighthouse in CI | `js/packages/landing`, `tsp.growth`, [docs](../modules/growth.md) |
 | Feature flags, file uploads, AI usage metering, web and mobile starters | planned, phase 7 | `tsp.flags`, `tsp.storage`, `js/` |
+| Embeddings, vector search, RAG | planned, phase 8 | [roadmap](../roadmap.md#phase-8-vector-search), [docs/aws/17](../aws/17-vector-search.md) |
 
 ## Known gaps in the repo today
 - The first live deployment has not happened; runbooks and costs are unverified against a real account.

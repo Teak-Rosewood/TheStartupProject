@@ -6,3 +6,4 @@ Format: [Keep a Changelog](https://keepachangelog.com). Versioning: [SemVer](htt
 - `tsp.ai`: multi-provider LLM client, router, verified model catalog, OpenAI-compatible server.
 - AWS backend stack: `tsp.infra`, `tsp.server`, `tsp.auth`, `tsp.db`, `tsp.cache`, `tsp.nosql`, CI/CD workflows, runbooks (`docs/aws`).
 - Legal templates and startup guides (`docs/legal`, `docs/startup`).
+- Vector search design and costs on AWS (`docs/aws/17-vector-search.md`), roadmap with phase 8 (`docs/roadmap.md`), and the October 2026 project review (`docs/review-2026-10.md`).

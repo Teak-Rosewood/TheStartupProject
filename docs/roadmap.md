@@ -1,0 +1,86 @@
+# Roadmap
+
+Phases 1–7 are reconstructed from the phase references across the docs and are assumed complete for planning; phase 7 is partly built (flags, uploads, metering, AI gateway and the web app are in the code; the mobile starter and its docs are not yet). Phase 8 onward is new. The reasoning behind phases 9–12 is in the [October 2026 project review](review-2026-10.md).
+
+| Phase | Scope | Status |
+|---|---|---|
+| 0 | `tsp.ai`, AWS stack (`tsp.infra`, `tsp.server`, `tsp.auth`, `tsp.db`, `tsp.nosql`, `tsp.cache`) | done, awaiting first live deploy |
+| 1 | Repo hygiene, legal templates, startup guides | done |
+| 2 | Consent records, data export and deletion, audit log, configurable log retention | done |
+| 3 | Users, organizations, roles, invites, API keys, admin console | done |
+| 4 | Payments: Razorpay, Stripe, GST invoices, credits | done |
+| 5 | Background jobs, email, push, SMS, in-app | done |
+| 6 | Landing page, SEO, waitlist, events, referrals, metrics | done |
+| 7 | Feature flags, uploads, AI usage metering and gateway, web and mobile starters | in progress |
+| **8** | **Vector search and RAG** | planned (below) |
+| 9 | Launch hardening: fix the review's blockers, first live deploy, dev environment | planned |
+| 10 | Observability and quality: tracing, error tracking, LLM evals, e2e and load tests | planned |
+| 11 | Platform for customers: public API docs and SDK, outbound webhooks, search, status page | planned |
+| 12 | Enterprise readiness: SSO/SAML, RLS everywhere, SOC 2 / ISO evidence, DR | planned |
+
+## Phase 8: Vector search
+
+Goal: any app built on the kit can index an organization's documents and answer questions over them with citations, isolated per organization, billed in credits, deletable on request, and costing $0 extra at stage 0. Store choice and costs: [docs/aws/17-vector-search.md](aws/17-vector-search.md).
+
+Prerequisite: phase 7 done (uploads in `tsp.storage`, credits in `tsp.metering`, the AI gateway and flags).
+
+### 8.1 Embeddings in `tsp.ai`
+- Implement `embedding()` for the OpenAI-compatible, Cohere and Google providers (the base class already declares it), and add a Bedrock provider for Titan and Cohere-on-Bedrock.
+- `client.embeddings.create(model=..., input=[...])`, batched, returning vectors plus token usage. `model` is required: no `auto` routing for embeddings; fallback only across keys or providers serving the same model.
+- `tsp-ai verify` probes embedding models too and records their dimensions in the catalog.
+- Gateway: `POST /v1/embeddings` on the AI gateway with API-key scope `embed`, metered as `ai.embed`.
+- Done when: unit tests with recorded payloads per provider; a dimension mismatch is an error, not silent truncation.
+
+### 8.2 pgvector in every Postgres we run
+- `docker/postgres/Dockerfile` installs `postgresql-16-pgvector`; `docker-compose.yml` and `.github/workflows/python.yml` use `pgvector/pgvector:pg16`.
+- A migration runs `CREATE EXTENSION vector` (allowed on RDS and Aurora).
+- `docker/postgres/test_backup.sh` restores a table with a vector column to prove backups cover it.
+- Done when: CI is green with the extension and the backup drill passes.
+
+### 8.3 New module `tsp.vector`
+- `VectorStore` protocol: `upsert(org_id, items)`, `query(org_id, vector, k, filter)`, `delete(org_id, ids)`, `delete_document`, `delete_org`. `org_id` is a required argument everywhere.
+- Backends: `PgVectorStore` (default, uses `tsp.db`), `S3VectorStore` (one index per organization), and a stub for OpenSearch Serverless. All pass one shared contract test suite.
+- Schema: `vector_documents` (org, source file, checksum, status, metadata) and `vector_chunks` (content, `halfvec(dims)`, model, generated `tsvector`), HNSW and GIN indexes, row-level security on `org_id`.
+- Hybrid search: vector top-k and full-text top-k merged by reciprocal-rank fusion; optional re-rank through `tsp.ai`.
+- Done when: the contract suite passes on pgvector in CI and on S3 Vectors behind an opt-in integration flag.
+
+### 8.4 Ingestion pipeline on `tsp.jobs`
+- Upload (existing `tsp.storage` presigned POST) → job `vector.ingest`: extract text (PDF, DOCX, HTML, Markdown; OCR optional and metered) → chunk (~400 tokens, overlap) → embed in batches → upsert, all idempotent by document checksum.
+- Job `vector.reembed` for a model change, run per organization in the background; old and new vectors coexist, filtered by `model`, until the switch.
+- Plan limits in `plans.toml`: `vector_docs`, `vector_chunks`, and a kill switch flag `vector`.
+- Done when: re-running the same upload does no work; a failed embed retries without duplicate chunks.
+
+### 8.5 Retrieval and RAG API
+- `POST /api/vector/search` (signed-in users, org role) and `POST /v1/retrieve` (API keys, scope `retrieve`).
+- `POST /v1/chat/completions` accepts an optional `retrieval: {collection, k}`; the gateway retrieves, inserts sources as quoted data, and returns citations.
+- Metering: `vector.search` per query and `ai.embed` per token; both draw credits like `ai.chat`.
+- Web app: a documents page (upload, status, delete) and a search box with cited answers.
+
+### 8.6 Compliance and safety
+- Register exporter and eraser with `tsp.compliance`: export lists documents; deletion of a user or organization removes documents, chunks and per-org S3 Vectors indexes.
+- Audit log entries for bulk deletes and re-embeds.
+- Prompt-injection guard: retrieved text is delimited and never treated as instructions; the gateway's `moderate` hook can inspect it.
+- Update [sub-processors](legal/subprocessors.md), the [privacy policy](legal/privacy-policy.md) and the [retention schedule](legal/data-retention.md) for embeddings and the embedding provider.
+
+### 8.7 Infrastructure
+- `VectorConfig` in `EnvConfig`: `mode: "pgvector" | "s3vectors" | "opensearch"`, `dims`, `embed_model`, `max_chunks_per_org`.
+- `s3vectors`: a vector bucket in `ap-south-1` and an IAM policy scoped to it for the API task role; `opensearch`: a collection with encryption, network and data-access policies. Both behind the flag, both synthesized in CI with cdk-nag.
+- Alarms: ingest queue age, vector query p95, database memory; a cost-allocation tag on vector resources.
+
+### 8.8 Evaluation
+- A small labelled set (questions → expected source chunks) per sample corpus; nightly job reports recall@5 and MRR, and fails on a drop.
+- A "golden answers" check for RAG through `tsp.ai`, run on free models by default.
+
+### 8.9 Docs and release
+- `docs/modules/vector.md`, CHANGELOG, [gaps](startup/gaps.md) update, and a runbook entry: rebuild an index, re-embed an organization, move a collection from pgvector to S3 Vectors.
+
+Exit criteria for phase 8: a new organization can upload a PDF, ask a question, get an answer with citations within its credit balance, and delete everything with one request; cost at idle is unchanged.
+
+## Phases 9–12
+
+Each line links to the finding it addresses in the [project review](review-2026-10.md).
+
+- **9 Launch hardening**: deploy and security workflows on the right branch ([B1](review-2026-10.md#b1-deploy-and-security-workflows-never-run)); missing phase-7 docs ([B2](review-2026-10.md#b2-docs-the-code-points-to-do-not-exist)); stale README and gaps ([B3](review-2026-10.md#b3-status-pages-disagree-with-the-code)); first live deploy with verified costs; dev environment ([docs/aws/11](aws/11-multi-env.md)); 180-day log retention for production.
+- **10 Observability and quality**: OpenTelemetry tracing, error tracking, LLM cost and latency dashboards per organization, end-to-end browser tests, load tests, generated TypeScript API client.
+- **11 Platform for customers**: public API reference and SDK, outbound webhooks, full-text search (shared with phase 8), status page, in-app changelog, internationalisation.
+- **12 Enterprise readiness**: SAML/OIDC SSO per organization, Postgres RLS on every tenant table, SOC 2 / ISO 27001 evidence collection, cross-region backup copies and a tested disaster-recovery runbook, e-invoicing (IRN) above the GST threshold.
