@@ -1,0 +1,21 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "tsp-ai"
+version = "0.1.0"
+description = "Multi-provider LLM client with routing, fallback, rate limiting and verified model catalogs"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+dependencies = ["httpx>=0.24", "pydantic>=2"]
+
+[project.optional-dependencies]
+server = ["fastapi>=0.110", "uvicorn[standard]>=0.29"]
+
+[project.scripts]
+tsp-ai = "tsp.ai.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/tsp"]

@@ -1,0 +1,21 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "tsp-server"
+version = "0.1.0"
+description = "FastAPI app factory: health, readiness, origin check, CORS, JSON logs, error envelope."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+dependencies = ["fastapi>=0.110", "uvicorn[standard]>=0.29", "pydantic>=2", "tsp-auth", "tsp-db", "tsp-cache", "tsp-nosql"]
+
+[tool.uv.sources]
+tsp-auth = { workspace = true }
+tsp-db = { workspace = true }
+tsp-cache = { workspace = true }
+tsp-nosql = { workspace = true }
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/tsp"]

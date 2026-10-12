@@ -1,0 +1,23 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "tsp-api-app"
+version = "0.1.0"
+description = "Sample API service built on the tsp.* runtime modules"
+requires-python = ">=3.10"
+dependencies = ["tsp-server", "tsp-db", "tsp-cache", "tsp-nosql", "tsp-auth"]
+
+[project.scripts]
+tsp-api = "tsp_api.main:main"
+
+[tool.uv.sources]
+tsp-server = { workspace = true }
+tsp-db = { workspace = true }
+tsp-cache = { workspace = true }
+tsp-nosql = { workspace = true }
+tsp-auth = { workspace = true }
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/tsp_api"]

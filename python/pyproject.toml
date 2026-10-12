@@ -1,0 +1,38 @@
+[tool.uv.workspace]
+members = ["packages/*", "apps/*"]
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+    "pytest-asyncio>=0.23",
+    "pytest-cov>=5",
+    "ruff>=0.6",
+    "mypy>=1.10",
+    "pre-commit>=3.7",
+    "fastapi>=0.110",
+    "uvicorn>=0.29",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+extend-exclude = ["*.ipynb"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+# Line length is the formatter's job; B904 is noisy for the adapters' re-raise-as-ProviderHttpError.
+ignore = ["E501", "B904"]
+
+[tool.mypy]
+python_version = "3.10"
+ignore_missing_imports = true
+namespace_packages = true
+explicit_package_bases = true
+mypy_path = "packages/ai/src:packages/infra/src:packages/cache/src:packages/db/src:packages/nosql/src:packages/auth/src:packages/server/src:apps/api/src"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["packages", "apps"]
+
+[tool.ruff.lint.flake8-bugbear]
+extend-immutable-calls = ["fastapi.Depends", "tsp.server.require_groups", "tsp.server.deps.require_groups"]

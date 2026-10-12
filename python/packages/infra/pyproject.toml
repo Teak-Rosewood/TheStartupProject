@@ -1,0 +1,15 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "tsp-infra"
+version = "0.1.0"
+description = "AWS CDK constructs for the TheStartupProject backend stack"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+dependencies = ["aws-cdk-lib>=2.170", "constructs>=10", "cdk-nag>=2.34", "pydantic>=2"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/tsp"]

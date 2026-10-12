@@ -1,0 +1,15 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "tsp-auth"
+version = "0.1.0"
+description = "Cognito JWT verification with JWKS caching."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+dependencies = ["PyJWT[crypto]>=2.8", "httpx>=0.24", "pydantic>=2"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/tsp"]

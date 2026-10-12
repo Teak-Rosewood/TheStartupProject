@@ -1,0 +1,18 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "tsp-db"
+version = "0.1.0"
+description = "Async SQLAlchemy engine/session helpers and Alembic migration runner."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+dependencies = ["sqlalchemy[asyncio]>=2", "asyncpg>=0.29", "alembic>=1.13"]
+
+[project.scripts]
+tsp-db = "tsp.db.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/tsp"]

@@ -1,0 +1,47 @@
+name: drift
+# Weekly: does production still match the code? Opens an issue when it does not.
+on:
+  schedule:
+    - cron: "41 4 * * 1"
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+  issues: write
+
+jobs:
+  drift:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: python
+    env:
+      TSP_ORIGIN_VERIFY: ${{ secrets.TSP_ORIGIN_VERIFY }}
+      CDK_DEFAULT_ACCOUNT: ${{ vars.AWS_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - uses: actions/setup-node@v4
+        with: { node-version: "22" }
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DIFF_ROLE_ARN }}
+          aws-region: ap-south-1
+      - run: uv sync --frozen --all-extras
+      - name: deployed image tags
+        run: |
+          tag() { aws ecs describe-task-definition --task-definition "$(aws ecs describe-services --cluster tsp-prod-cluster --services "$1" --query 'services[0].taskDefinition' --output text)" --query "taskDefinition.containerDefinitions[?name=='main'].image" --output text | sed 's/.*://'; }
+          echo "TSP_IMAGE_TAG=$(tag tsp-prod-api)" >> "$GITHUB_ENV"
+          echo "TSP_PG_IMAGE_TAG=$(tag tsp-prod-postgres)" >> "$GITHUB_ENV"
+      - name: cdk diff --fail
+        id: diff
+        working-directory: python/apps/infra
+        run: npx --yes aws-cdk@2 diff 'prod/*' --fail --no-color 2>&1 | tee "$RUNNER_TEMP/drift.txt"
+      - name: open an issue on drift
+        if: failure() && steps.diff.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          { echo "Production differs from the code on \`main\`:"; echo '```'; head -c 60000 "$RUNNER_TEMP/drift.txt"; echo '```'; } > "$RUNNER_TEMP/issue.md"
+          gh issue create --title "Infrastructure drift detected" --body-file "$RUNNER_TEMP/issue.md"

@@ -1,0 +1,14 @@
+version: 2
+updates:
+  - package-ecosystem: uv
+    directory: /python
+    schedule: { interval: weekly }
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: weekly }
+  - package-ecosystem: docker
+    directory: /docker/postgres
+    schedule: { interval: weekly }
+  - package-ecosystem: docker
+    directory: /python/apps/api
+    schedule: { interval: weekly }

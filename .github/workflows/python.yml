@@ -1,0 +1,61 @@
+name: python
+on:
+  push:
+  pull_request:
+  workflow_call:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.10", "3.13"]
+    defaults:
+      run:
+        working-directory: python
+    # Real services, mapped to the ports the tests default to (see docker-compose.yml).
+    services:
+      postgres:
+        image: postgres:16
+        env: { POSTGRES_PASSWORD: test, POSTGRES_DB: test }
+        ports: ["55432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+      valkey:
+        image: valkey/valkey:8
+        ports: ["56379:6379"]
+        options: >-
+          --health-cmd "valkey-cli ping" --health-interval 5s --health-timeout 5s --health-retries 10
+      dynamodb:
+        image: amazon/dynamodb-local
+        ports: ["58000:8000"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - uses: actions/setup-node@v4
+        with: { node-version: "22" } # jsii (aws-cdk-lib) runs on node
+      - run: uv sync --python ${{ matrix.python }} --all-extras
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run mypy packages apps/api/src
+      - run: uv run pytest --cov=tsp
+
+  postgres-backup:
+    # Proves backup + point-in-time restore against an S3 mock, using the exact production image.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t tsp-postgres:test docker/postgres
+      - run: docker/postgres/test_backup.sh
+
+  api-image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -f python/apps/api/Dockerfile -t tsp-api:test python
+      - name: container starts, serves health, and runs as non-root
+        run: |
+          docker run -d --name api -p 8000:8000 tsp-api:test
+          for _ in $(seq 1 20); do curl -fsS localhost:8000/api/health && break; sleep 1; done
+          test "$(docker exec api id -u)" != 0

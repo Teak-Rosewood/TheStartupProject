@@ -1,0 +1,16 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "tsp-infra-app"
+version = "0.1.0"
+description = "CDK app that deploys the prod environment"
+requires-python = ">=3.10"
+dependencies = ["tsp-infra"]
+
+[tool.uv.sources]
+tsp-infra = { workspace = true }
+
+[tool.hatch.build.targets.wheel]
+packages = ["config"]

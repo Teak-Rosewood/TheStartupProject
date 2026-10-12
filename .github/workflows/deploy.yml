@@ -1,0 +1,100 @@
+name: deploy
+# Production deploys happen only here. The `prod` GitHub environment holds the role ARN and can
+# require reviewers (needs a public repo or a paid plan; otherwise deploy from version tags).
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Redeploy an existing API image tag (rollback). Leave empty to deploy this commit."
+        required: false
+
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  test:
+    uses: ./.github/workflows/python.yml
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-24.04-arm # native arm64: the host is Graviton
+    environment: prod
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: python
+    env:
+      AWS_REGION: ap-south-1
+      TSP_ORIGIN_VERIFY: ${{ secrets.TSP_ORIGIN_VERIFY }}
+      CDK_DEFAULT_ACCOUNT: ${{ vars.AWS_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - uses: actions/setup-node@v4
+        with: { node-version: "22" }
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ap-south-1
+      - run: uv sync --frozen --all-extras
+
+      - name: registry stack first, so repositories exist before images are pushed
+        working-directory: python/apps/infra
+        run: npx --yes aws-cdk@2 deploy 'prod/tsp-prod-oidc' 'prod/tsp-prod-registry' --require-approval never
+
+      - name: image tags
+        run: |
+          echo "API_TAG=${{ inputs.image_tag || github.sha }}" >> "$GITHUB_ENV"
+          echo "PG_TAG=$(git rev-parse HEAD:docker/postgres | cut -c1-12)" >> "$GITHUB_ENV"
+
+      - name: "build and push images (immutable tags: skipped when they already exist)"
+        working-directory: ${{ github.workspace }}
+        run: |
+          REG="${{ vars.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com"
+          aws ecr get-login-password | docker login --username AWS --password-stdin "$REG"
+          push() { # repo tag context dockerfile
+            if aws ecr describe-images --repository-name "$1" --image-ids imageTag="$2" >/dev/null 2>&1; then
+              echo "$1:$2 already exists"
+            else
+              docker build -f "$4" -t "$REG/$1:$2" "$3" && docker push "$REG/$1:$2"
+            fi
+          }
+          push tsp-prod-api "$API_TAG" python python/apps/api/Dockerfile
+          push tsp-prod-postgres "$PG_TAG" docker/postgres docker/postgres/Dockerfile
+
+      - name: deploy backend + edge (waits for ECS to stabilize; the circuit breaker rolls back a bad release)
+        working-directory: python/apps/infra
+        env:
+          TSP_IMAGE_TAG: ${{ env.API_TAG }}
+          TSP_PG_IMAGE_TAG: ${{ env.PG_TAG }}
+        run: npx --yes aws-cdk@2 deploy 'prod/*' --require-approval never --concurrency 2
+
+      - name: smoke test through CloudFront
+        run: |
+          for _ in $(seq 1 30); do
+            curl -fsS "https://${{ vars.APP_DOMAIN }}/api/health" && exit 0
+            sleep 10
+          done
+          echo "health check failed after deploy" >&2; exit 1
+
+      - name: publish frontend (if FRONTEND_DIR is set and built)
+        working-directory: ${{ github.workspace }}
+        run: |
+          DIR="${{ vars.FRONTEND_DIR }}"
+          if [ -n "$DIR" ] && [ -d "$DIR" ]; then
+            aws s3 sync "$DIR" "s3://tsp-prod-frontend-${{ vars.AWS_ACCOUNT_ID }}" --delete \
+              --cache-control "public,max-age=31536000,immutable" --exclude index.html
+            aws s3 cp "$DIR/index.html" "s3://tsp-prod-frontend-${{ vars.AWS_ACCOUNT_ID }}/index.html" --cache-control "no-cache"
+            DIST=$(aws cloudformation describe-stacks --region us-east-1 --stack-name tsp-prod-edge \
+              --query "Stacks[0].Outputs[?OutputKey=='DistributionId'].OutputValue" --output text)
+            aws cloudfront create-invalidation --distribution-id "$DIST" --paths "/index.html"
+          else
+            echo "no frontend to publish"
+          fi

@@ -1,0 +1,68 @@
+name: infra
+on:
+  pull_request:
+    paths:
+      - "python/packages/infra/**"
+      - "python/apps/infra/**"
+      - "python/uv.lock"
+      - ".github/workflows/infra.yml"
+
+jobs:
+  synth:
+    # Synth, assertion tests and the cdk-nag security pack. Needs no AWS credentials.
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: python
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - uses: actions/setup-node@v4
+        with: { node-version: "22" }
+      - run: uv sync --all-extras
+      - run: uv run pytest packages/infra -q
+      - name: cdk synth
+        working-directory: python/apps/infra
+        run: npx --yes aws-cdk@2 synth --quiet
+
+  diff:
+    # What would change in production. Same-repo PRs only: forks get no secrets or AWS role.
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    needs: synth
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+      pull-requests: write
+    defaults:
+      run:
+        working-directory: python
+    env:
+      TSP_ORIGIN_VERIFY: ${{ secrets.TSP_ORIGIN_VERIFY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - uses: actions/setup-node@v4
+        with: { node-version: "22" }
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DIFF_ROLE_ARN }}
+          aws-region: ap-south-1
+      - run: uv sync --all-extras
+      - name: current image tags (so the diff shows only what this PR changes)
+        run: |
+          tag() { aws ecs describe-task-definition --task-definition "$(aws ecs describe-services --cluster tsp-prod-cluster --services "$1" --query 'services[0].taskDefinition' --output text)" --query "taskDefinition.containerDefinitions[?name=='main'].image" --output text | sed 's/.*://'; }
+          echo "TSP_IMAGE_TAG=$(tag tsp-prod-api || echo bootstrap)" >> "$GITHUB_ENV"
+          echo "TSP_PG_IMAGE_TAG=$(tag tsp-prod-postgres || echo bootstrap)" >> "$GITHUB_ENV"
+      - name: cdk diff
+        working-directory: python/apps/infra
+        env:
+          CDK_DEFAULT_ACCOUNT: ${{ vars.AWS_ACCOUNT_ID }}
+        run: npx --yes aws-cdk@2 diff 'prod/*' --no-color > "$RUNNER_TEMP/diff.txt" 2>&1 || true
+      - name: comment on the PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          { echo '### `cdk diff` against production'; echo '```'; head -c 60000 "$RUNNER_TEMP/diff.txt"; echo '```'; } > "$RUNNER_TEMP/comment.md"
+          gh pr comment ${{ github.event.pull_request.number }} --body-file "$RUNNER_TEMP/comment.md" --edit-last || \
+          gh pr comment ${{ github.event.pull_request.number }} --body-file "$RUNNER_TEMP/comment.md"

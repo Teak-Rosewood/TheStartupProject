@@ -1,0 +1,49 @@
+name: backup-drill
+# Monthly: restore the newest production backup into a throwaway database and check it.
+# A backup that has never been restored is not a backup.
+on:
+  schedule:
+    - cron: "17 3 5 * *"
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+  issues: write
+
+jobs:
+  drill:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DRILL_ROLE_ARN }}
+          aws-region: ap-south-1
+      - name: restore the latest backup and query it
+        run: |
+          BUCKET=$(aws cloudformation describe-stacks --stack-name tsp-prod-backend \
+            --query "Stacks[0].Outputs[?OutputKey=='BackupBucket'].OutputValue" --output text)
+          docker build -q -t tsp-postgres:drill docker/postgres
+          docker volume create drill-data >/dev/null
+          ENVS=(-e PGBACKREST_STANZA=main -e PGBACKREST_PG1_PATH=/var/lib/postgresql/data
+            -e PGBACKREST_PG1_SOCKET_PATH=/var/run/postgresql -e PGBACKREST_REPO1_TYPE=s3
+            -e PGBACKREST_REPO1_PATH=/pgbackrest -e PGBACKREST_REPO1_S3_BUCKET="$BUCKET"
+            -e PGBACKREST_REPO1_S3_ENDPOINT=s3.ap-south-1.amazonaws.com -e PGBACKREST_REPO1_S3_REGION=ap-south-1
+            -e PGBACKREST_REPO1_S3_KEY_TYPE=shared -e PGBACKREST_REPO1_S3_KEY="$AWS_ACCESS_KEY_ID"
+            -e PGBACKREST_REPO1_S3_KEY_SECRET="$AWS_SECRET_ACCESS_KEY" -e PGBACKREST_REPO1_S3_TOKEN="$AWS_SESSION_TOKEN")
+          docker run --rm --user root -v drill-data:/var/lib/postgresql/data tsp-postgres:drill chown postgres:postgres /var/lib/postgresql/data
+          docker run --rm --user postgres "${ENVS[@]}" -v drill-data:/var/lib/postgresql/data tsp-postgres:drill pgbackrest restore
+          docker run -d --name drill "${ENVS[@]}" -v drill-data:/var/lib/postgresql/data tsp-postgres:drill postgres -c listen_addresses=127.0.0.1 -c archive_mode=off
+          for _ in $(seq 1 90); do docker exec -u postgres drill pg_isready -q && break; sleep 2; done
+          VER=$(docker exec -u postgres drill psql -qAt -d "${POSTGRES_DB:-app}" -c "select version_num from alembic_version")
+          echo "restored database is at migration: $VER"
+          test -n "$VER"
+      - name: open an issue when the drill fails
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          gh issue create --title "Backup restore drill failed" \
+            --body "The monthly restore drill failed: $URL. Restore procedure: docs/aws/12-runbooks.md."
