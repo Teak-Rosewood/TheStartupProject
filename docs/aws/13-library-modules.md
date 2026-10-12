@@ -19,6 +19,7 @@
 | `tsp-flags` (`tsp.flags`) | runtime | feature flags, rollouts, kill switches; see [product operations](../modules/product-ops.md) |
 | `tsp-storage` (`tsp.storage`) | runtime | presigned uploads with size/type limits, per-org prefixes and quotas |
 | `tsp-metering` (`tsp.metering`) | runtime | usage records and token-to-credit pricing |
+| `tsp-graph` (`tsp.graph`) | runtime | entities, claims with provenance, dated links, stances and time series on Postgres; see [knowledge graph](../modules/graph.md) |
 | `tsp-ai` (`tsp.ai`) | runtime | multi-provider LLM client and server (already built) |
 
 Runtime modules take explicit URLs and parameters and know nothing about each other, so you can use any one alone. Only `tsp.server` reads environment settings and wires the others together. The deployable sample service lives in `python/apps/api`, and the CDK app in `python/apps/infra`.
