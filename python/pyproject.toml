@@ -12,6 +12,7 @@ dev = [
     "hypothesis>=6",
     "fastapi>=0.110",
     "uvicorn>=0.29",
+    "jsonschema>=4",
 ]
 
 [tool.ruff]
