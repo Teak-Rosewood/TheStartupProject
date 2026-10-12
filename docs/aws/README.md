@@ -37,6 +37,7 @@ Two regions on purpose. The request path (host, database, cache, DynamoDB, Cogni
 | SQL | Postgres container on the host | Cheapest option with no cold starts. Dedicated EBS volume, continuous backup to S3 (point-in-time recovery). | Move to RDS before a second host, with a short documented cutover |
 | NoSQL | DynamoDB on-demand | $0 at idle, scales to zero effort, no servers | none |
 | Cache | Valkey container on the host | $0 extra | Switch config to ElastiCache Serverless, no app change |
+| Vector search (phase 8) | pgvector in the same Postgres | $0 extra, same backups, deletes and tenant filters as the rest of the data | Move large collections to S3 Vectors by config, see [17](17-vector-search.md) |
 | Auth | Cognito (Essentials) | Free up to 10,000 monthly active users; handles password storage, social login, passkeys, MFA | Stays as is |
 | Edge | CloudFront (+ S3) | TLS, caching, DDoS protection, one front door for static files and the API | Add WAF rules or a VPC origin as you grow |
 | Config and secrets | Task environment for non-secrets, Secrets Manager for credentials | Secrets are injected by ECS and never appear in the task definition. Each secret costs about $0.40/mo; there are three at most (database, Google, Apple). | none |
@@ -81,6 +82,8 @@ What gets more expensive as you grow, and when: a second host plus ALB (+$20–4
 | [14 Payments setup](14-payments.md) | gateway secrets, seller details, webhook URL |
 | [15 Email setup](15-email.md) | SES domain, DNS records, production access |
 | [16 AI gateway and uploads](16-ai-gateway.md) | provider keys secret, uploads bucket, web app sign-in config |
+| [17 Vector search](17-vector-search.md) | pgvector first, S3 Vectors and OpenSearch later; options and cost by size |
+| [18 Web ingestion](18-web-ingestion.md) | scraping tools compared (Scrapy, Crawl4AI, Crawlee, Firecrawl), crawl-to-vector pipeline, guardrails, cost |
 
 ## Accepted stage-0 trade-offs
 

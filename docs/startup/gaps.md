@@ -1,6 +1,6 @@
 # What this kit covers, and what is missing
 
-Status as of the last update to this file. "Planned" items are scheduled in the order listed in the roadmap below.
+Status as of the last update to this file. "Planned" items are scheduled in the order listed in the [roadmap](../roadmap.md). A full review of what is missing is in the [October 2026 project review](../review-2026-10.md).
 
 | Area | Status | Where |
 |---|---|---|
@@ -17,6 +17,8 @@ Status as of the last update to this file. "Planned" items are scheduled in the 
 | Landing page, SEO, waitlist, events, attribution, referrals, metrics | built and verified; needs your copy, a real OG image and Lighthouse in CI | `js/packages/landing`, `tsp.growth`, [docs](../modules/growth.md) |
 | Feature flags, kill switches, file uploads, AI gateway with usage metering | built and tested; needs live check and a malware scanner if you accept untrusted files | `tsp.flags`, `tsp.storage`, `tsp.metering`, [docs](../modules/product-ops.md) |
 | Web app (sign-in, orgs, billing, settings, API keys) and mobile starter | web app built, tested and bundled; mobile is source only and was not built or run here | `js/packages/web-app`, `js/packages/mobile` |
+| Embeddings, vector search, RAG | planned, phase 8 | [roadmap](../roadmap.md#phase-8-vector-search), [docs/aws/17](../aws/17-vector-search.md) |
+| Web crawling into vector search, live web tools | planned, phase 8b | [roadmap](../roadmap.md#phase-8b-web-ingestion), [docs/aws/18](../aws/18-web-ingestion.md) |
 
 ## Known gaps in the repo today
 - The first live deployment has not happened; runbooks and costs are unverified against a real account.
