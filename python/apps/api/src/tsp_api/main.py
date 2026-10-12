@@ -420,9 +420,9 @@ def build_app() -> FastAPI:
         )
         render_token = os.environ.get("CRAWL_RENDER_TOKEN")
         if render_token and crawl.render_remote:
-            # Not under the API prefix: the edge only forwards that prefix, so the render worker
-            # reaches this by the API's private address (docs/modules/crawl.md).
-            app.include_router(build_render_router(crawl, render_token))
+            # Under the API prefix, because that is all the edge forwards and the render worker runs
+            # outside the VPC. The bearer token is the only credential and opens only these routes.
+            app.include_router(build_render_router(crawl, render_token), prefix=settings.api_prefix)
     if paywall is not None:
         app.state.paywall = paywall
         app.include_router(

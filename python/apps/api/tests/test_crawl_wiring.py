@@ -196,7 +196,7 @@ def test_kill_switch_stops_new_sources(client):
 
 
 def test_render_api_is_mounted_only_when_configured(client, monkeypatch):
-    assert client.post("/internal/crawl/render/claim").status_code == 404
+    assert client.post("/api/internal/crawl/render/claim").status_code == 404
     import tsp_api.main as main
 
     monkeypatch.setenv("CRAWL_RENDER", "fargate")
@@ -204,6 +204,8 @@ def test_render_api_is_mounted_only_when_configured(client, monkeypatch):
     monkeypatch.setattr(main, "build_llm", lambda: FakeLLM())
     app = main.build_app()
     with TestClient(app) as c:
-        assert c.post("/internal/crawl/render/claim").status_code == 401
-        ok = c.post("/internal/crawl/render/claim", headers={"Authorization": "Bearer " + "r" * 32})
+        assert c.post("/api/internal/crawl/render/claim").status_code == 401
+        ok = c.post(
+            "/api/internal/crawl/render/claim", headers={"Authorization": "Bearer " + "r" * 32}
+        )
         assert ok.status_code == 204
