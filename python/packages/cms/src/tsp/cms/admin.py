@@ -86,8 +86,6 @@ class ComplaintView(_ReadOnly, model=Complaint):
         Complaint.resolve_due_at,
     ]
     column_default_sort = [(Complaint.received_at, True)]
-    # The message and the complainant's contact details are personal data: open the record to read them.
-    column_details_exclude_list = []
 
 
 class ComplaintEventView(_ReadOnly, model=ComplaintEvent):
@@ -118,3 +116,19 @@ class WindowView(_ReadOnly, model=Window):
 
 
 CMS_VIEWS = [CmsItemView, CorrectionView, ReviewView, ComplaintView, ComplaintEventView, WindowView]
+
+# sqladmin derives ``identity`` from the model class name when the class is created and ignores one
+# set in the class body, so set it afterwards. The identity is also what the staff roles grant on.
+for _view, _identity in zip(
+    CMS_VIEWS,
+    (
+        "cms-item",
+        "cms-correction",
+        "cms-review",
+        "cms-complaint",
+        "cms-complaint-event",
+        "cms-window",
+    ),
+    strict=True,
+):
+    _view.identity = _identity

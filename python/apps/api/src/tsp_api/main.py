@@ -13,6 +13,15 @@ from tsp.accounts import api as accounts_api
 from tsp.admin import AdminSettings, mount_admin
 from tsp.ai import LLMClient
 from tsp.cache import NullCache
+from tsp.cms import (
+    build_complaints_router,
+    build_intake_router,
+    build_public_router,
+    register_complaints_with_compliance,
+)
+from tsp.cms import build_router as cms_router
+from tsp.cms import register_jobs as cms_jobs
+from tsp.cms.admin import CMS_VIEWS
 from tsp.compliance import (
     CognitoIdentity,
     Compliance,
@@ -59,6 +68,7 @@ from tsp.vector import register_with_compliance as vector_compliance
 from .ai import AiGateway, catalog_lifespan, register_catalog_jobs
 from .ai import build_router as build_ai_router
 from .billing import build_payments, plans_path, sync_plans_on_start
+from .cms import Cms, cms_settings, principal_dependency
 from .growth import build_leads, optional_sub, set_first_touch
 from .notifications import Hooks, build_notifier, build_registry
 from .routes import erase_notes, export_notes, gated, router
@@ -240,6 +250,15 @@ def build_app() -> FastAPI:
             registry, llm, free_only=os.environ.get("AI_VERIFY_FREE_ONLY", "1") == "1"
         )
     flags = Flags()
+    cms = Cms(cms_settings(), notifier)
+    cms_jobs(
+        registry,
+        flags=flags,
+        desk=cms.desk,
+        checks=cms.checks,
+        lifecycle=cms.settings.lifecycle,
+        notify_review_due=cms.notify_review_due,
+    )
     uploads = build_uploads(settings)
     uploads.register_with_compliance(compliance)
     vector = build_vector(settings, llm, uploads, flags, payments) if llm is not None else None
@@ -277,6 +296,7 @@ def build_app() -> FastAPI:
         return user.email if user else None
 
     notify_register(compliance, email_of)
+    register_complaints_with_compliance(compliance, email_of)
     leads, captcha = build_leads(notifier)
     consent, active = make_guards(compliance, current_user, db_session)
     app.include_router(
@@ -330,6 +350,39 @@ def build_app() -> FastAPI:
         )
         app.state.ai_gateway = gateway
         app.include_router(build_ai_router(gateway), prefix=settings.api_prefix)
+    # Editors and reviewers (organization owners and admins) work through /api/cms; readers see the
+    # corrections log and send complaints through /api/public/cms when CMS_PUBLIC_ORG is set.
+    cms_principal = principal_dependency(accounts, api.account, db_session)
+    app.include_router(
+        cms_router(cms_principal, db_session, cms.service), prefix=settings.api_prefix
+    )
+    app.include_router(
+        build_complaints_router(cms_principal, db_session, cms.desk), prefix=settings.api_prefix
+    )
+    if cms.settings.public_org:
+        app.include_router(
+            build_public_router(
+                db_session,
+                cms.settings.public_org,
+                base_url=notifier.base_url,
+                service_factory=cms.service,
+            ),
+            prefix=settings.api_prefix,
+        )
+
+        async def human(token: str | None, ip: str | None) -> bool:
+            return await captcha.verify(token, ip)
+
+        app.include_router(
+            build_intake_router(
+                db_session,
+                cms.settings.public_org,
+                cms.desk,
+                get_cache,
+                captcha=human if captcha.enabled else None,
+            ),
+            prefix=settings.api_prefix,
+        )
     if vector is not None:
 
         async def vector_killed(s: Any) -> bool:
@@ -366,6 +419,7 @@ def build_app() -> FastAPI:
             compliance=compliance,
             payments=payments,
             flags=flags,
+            extra_views=CMS_VIEWS,
         )
     return app
 
