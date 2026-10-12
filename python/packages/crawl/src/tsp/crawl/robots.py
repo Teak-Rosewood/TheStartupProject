@@ -50,6 +50,15 @@ class RobotsCache:
         rules, deny = await self._rules(url)
         return False if deny else bool(rules.can_fetch(url, user_agent))
 
+    async def verdict(self, url: str, user_agent: str) -> bool | None:
+        """Like ``allowed`` but ``None`` when robots.txt could not be read (5xx or unreachable), so
+        callers that react to a *change* in policy can tell a real disallow from an outage."""
+        rules, deny = await self._rules(url)
+        return None if deny else bool(rules.can_fetch(url, user_agent))
+
+    async def invalidate(self, url: str) -> None:
+        await self._cache.delete(f"crawl:robots:{self._origin(url)}")
+
     async def crawl_delay(self, url: str, user_agent: str) -> float | None:
         rules, deny = await self._rules(url)
         if deny:

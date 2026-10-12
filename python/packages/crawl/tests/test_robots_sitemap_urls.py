@@ -87,3 +87,15 @@ def test_canonical_same_host_only():
     assert canonical(_page("https://a.test/x?utm_x=1", "https://a.test/x")) == "https://a.test/x"
     assert canonical(_page("https://a.test/x", "https://evil.test/x")) == "https://a.test/x"
     assert canonical(_page("https://a.test/x", None)) == "https://a.test/x"
+
+
+async def test_verdict_distinguishes_outage_from_disallow_and_invalidate_refetches():
+    assert await robots(200, ROBOTS).verdict("https://a.test/private", UA) is False
+    assert await robots(200, ROBOTS).verdict("https://a.test/ok", UA) is True
+    assert await robots(503).verdict("https://a.test/ok", UA) is None
+    calls = []
+    r = robots(200, ROBOTS, calls)
+    await r.allowed("https://a.test/", UA)
+    await r.invalidate("https://a.test/x")
+    await r.allowed("https://a.test/", UA)
+    assert len(calls) == 2
