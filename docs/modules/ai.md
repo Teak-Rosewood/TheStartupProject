@@ -42,6 +42,21 @@ await client.close()
 
 With a catalog, only models that answered are routable and their latency seeds the speed score. A missing or corrupt catalog raises an error. Without a catalog, pass models yourself: `LLMClient(providers={"groq": {"api_key": "...", "models": ["llama-3.3-70b-versatile"]}})`.
 
+## Embeddings
+
+```python
+resp = await client.embeddings.create(
+    model="text-embedding-3-small",       # required: no "auto", vectors from different models are incompatible
+    input=["first text", "second text"],
+    dims=1536,                            # optional; also checked against the catalog's recorded dims
+    input_type="document",                # or "query" (Cohere, Google and Cohere-on-Bedrock use it)
+    batch_size=96,
+)
+resp.data[0].embedding, resp.dims, resp.usage.total_tokens
+```
+
+Vectors come back in input order. Fallback goes only across keys and providers that serve the same model id, never to a different model. A vector whose length differs from `dims` (or the catalog's) raises `EmbeddingDimensionError`; nothing is truncated or padded. Providers: OpenAI-compatible (`/embeddings`), Cohere, Google (`batchEmbedContents`) and AWS Bedrock (`pip install 'tsp-ai[bedrock]'`; Titan v2 and Cohere Embed). `tsp-ai verify` also probes each provider's embedding models and stores their `dims` under `embedding_models` in the catalog; without a catalog pass `"embedding_models": {"model-id": dims}` per provider. The gateway route is described in [AI gateway](../aws/16-ai-gateway.md).
+
 ## Sync
 
 ```python
