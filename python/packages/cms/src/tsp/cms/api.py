@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 from tsp.audit import Actor
@@ -40,8 +40,21 @@ class VersionBody(BaseModel):
     change_note: str = ""
 
 
-class ScheduleBody(BaseModel):
+class CorrectionBody(BaseModel):
+    """Required when the item is already published: what changed, for readers."""
+
+    kind: str | None = None
+    public_note: str | None = None
+    internal_note: str = ""
+
+
+class ScheduleBody(CorrectionBody):
     at: datetime
+
+
+class ReviewBody(BaseModel):
+    decision: str
+    reason: str = ""
 
 
 class ReasonBody(BaseModel):
@@ -53,7 +66,8 @@ def _item(i: Item) -> dict[str, Any]:
         "id": str(i.id), "type": i.type, "slug": i.slug, "state": i.state, "lang": i.primary_lang,
         "current_version_id": str(i.current_version_id) if i.current_version_id else None,
         "published_version_id": str(i.published_version_id) if i.published_version_id else None,
-        "publish_at": i.publish_at, "lifecycle": i.lifecycle,
+        "publish_at": i.publish_at, "lifecycle": i.lifecycle, "review_due_at": i.review_due_at,
+        "frozen_at": i.frozen_at, "frozen_reason": i.frozen_reason,
     }  # fmt: skip
 
 
@@ -174,14 +188,88 @@ def build_router(
         s: AsyncSession = Depends(session),
     ) -> dict[str, Any]:
         return _item(
-            await call(service_factory(s).schedule(p.org_id, item_id, body.at, need(p, "reviewer")))
+            await call(
+                service_factory(s).schedule(
+                    p.org_id,
+                    item_id,
+                    body.at,
+                    need(p, "reviewer"),
+                    kind=body.kind,
+                    public_note=body.public_note,
+                    internal_note=body.internal_note,
+                )
+            )
         )
 
     @r.post("/items/{item_id}/publish")
     async def publish(
-        item_id: uuid.UUID, p: Principal = Depends(principal), s: AsyncSession = Depends(session)
+        item_id: uuid.UUID,
+        body: CorrectionBody | None = None,
+        p: Principal = Depends(principal),
+        s: AsyncSession = Depends(session),
     ) -> dict[str, Any]:
-        return _item(await call(service_factory(s).publish(p.org_id, item_id, need(p, "reviewer"))))
+        b = body or CorrectionBody()
+        return _item(
+            await call(
+                service_factory(s).publish(
+                    p.org_id,
+                    item_id,
+                    need(p, "reviewer"),
+                    kind=b.kind,
+                    public_note=b.public_note,
+                    internal_note=b.internal_note,
+                )
+            )
+        )
+
+    @r.post("/items/{item_id}/review")
+    async def review(
+        item_id: uuid.UUID,
+        body: ReviewBody,
+        p: Principal = Depends(principal),
+        s: AsyncSession = Depends(session),
+    ) -> dict[str, Any]:
+        """Decide a due review: ``living`` (a new cycle starts) or ``frozen`` (a public note says so)."""
+        return _item(
+            await call(
+                service_factory(s).decide_review(
+                    p.org_id, item_id, body.decision, need(p, "reviewer"), body.reason
+                )
+            )
+        )
+
+    @r.post("/items/{item_id}/unfreeze")
+    async def unfreeze(
+        item_id: uuid.UUID,
+        body: ReasonBody,
+        p: Principal = Depends(principal),
+        s: AsyncSession = Depends(session),
+    ) -> dict[str, Any]:
+        return _item(
+            await call(
+                service_factory(s).unfreeze(p.org_id, item_id, need(p, "reviewer"), body.reason)
+            )
+        )
+
+    @r.post("/items/{item_id}/notes", status_code=201)
+    async def note(
+        item_id: uuid.UUID,
+        body: CorrectionBody,
+        p: Principal = Depends(principal),
+        s: AsyncSession = Depends(session),
+    ) -> dict[str, Any]:
+        """A clarification or correction note without a new version."""
+        c = await call(
+            service_factory(s).add_note(
+                p.org_id,
+                item_id,
+                body.kind or "",
+                body.public_note or "",
+                need(p, "reviewer"),
+                internal_note=body.internal_note,
+            )
+        )
+        return {"id": str(c.id), "kind": c.kind}
 
     @r.post("/items/{item_id}/unpublish")
     async def unpublish(
@@ -194,6 +282,89 @@ def build_router(
             await call(
                 service_factory(s).unpublish(p.org_id, item_id, body.reason, need(p, "reviewer"))
             )
+        )
+
+    return r
+
+
+def _rss(title: str, link: str, entries: list[dict[str, Any]], base_url: str) -> str:
+    from email.utils import format_datetime
+    from xml.sax.saxutils import escape
+
+    items = "".join(
+        f"<item><title>{escape(e['kind'].capitalize() + ': ' + e['title'])}</title>"
+        f"<link>{escape(base_url.rstrip('/') + '/' + e['slug'])}</link>"
+        f'<guid isPermaLink="false">{e["id"]}</guid>'
+        f"<pubDate>{format_datetime(e['at'])}</pubDate>"
+        f"<description>{escape(e['note'])}</description></item>"
+        for e in entries
+    )
+    return (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        f'<rss version="2.0"><channel><title>{escape(title)}</title><link>{escape(link)}</link>'
+        f"<description>{escape(title)}</description>{items}</channel></rss>"
+    )
+
+
+def build_public_router(
+    session: Callable[..., Any],
+    org: str | Callable[[Request], str],
+    *,
+    base_url: str,
+    title: str = "Corrections and updates",
+    service_factory: Callable[[AsyncSession], CmsService] = CmsService,
+) -> APIRouter:
+    """Unauthenticated, cacheable corrections log for readers and feed readers. ``org`` is the
+    publishing organization (a fixed id, or a function of the request such as the Host header).
+    Only entries of published items appear, and never the internal note."""
+    r = APIRouter(prefix="/public/cms")
+
+    def org_of(request: Request) -> str:
+        return org(request) if callable(org) else org
+
+    async def fetch(request: Request, s: AsyncSession, slug: str | None) -> list[dict[str, Any]]:
+        entries = await service_factory(s).corrections(org_of(request), slug)
+        if slug is not None and not entries:
+            try:
+                await service_factory(s).by_slug(org_of(request), slug)
+            except LookupError as e:
+                raise HTTPException(404, "not found") from e
+        return entries
+
+    def cache(resp: Response) -> None:
+        resp.headers["Cache-Control"] = "public, max-age=300"
+
+    @r.get("/corrections")
+    async def feed(
+        request: Request, response: Response, s: AsyncSession = Depends(session)
+    ) -> dict[str, Any]:
+        cache(response)
+        return {"corrections": await fetch(request, s, None)}
+
+    @r.get("/corrections.rss")
+    async def feed_rss(request: Request, s: AsyncSession = Depends(session)) -> Response:
+        xml = _rss(title, base_url, await fetch(request, s, None), base_url)
+        return Response(
+            xml, media_type="application/rss+xml", headers={"Cache-Control": "public, max-age=300"}
+        )
+
+    @r.get("/items/{slug}/corrections")
+    async def item_log(
+        slug: str, request: Request, response: Response, s: AsyncSession = Depends(session)
+    ) -> dict[str, Any]:
+        cache(response)
+        return {"corrections": await fetch(request, s, slug)}
+
+    @r.get("/items/{slug}/corrections.rss")
+    async def item_rss(slug: str, request: Request, s: AsyncSession = Depends(session)) -> Response:
+        xml = _rss(
+            f"{title}: {slug}",
+            f"{base_url.rstrip('/')}/{slug}",
+            await fetch(request, s, slug),
+            base_url,
+        )
+        return Response(
+            xml, media_type="application/rss+xml", headers={"Cache-Control": "public, max-age=300"}
         )
 
     return r

@@ -3,7 +3,7 @@ from __future__ import annotations
 import difflib
 import json
 import uuid
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any
@@ -14,7 +14,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from tsp.audit import Actor, record
 
 from .checks import CheckContext, CheckRegistry, CheckResult, default_registry
-from .models import CheckResultRow, DisclosureTemplate, Item, Variant, Version
+from .lifecycle import KINDS, LifecycleConfig
+from .models import CheckResultRow, Correction, DisclosureTemplate, Item, Review, Variant, Version
 
 SYSTEM = Actor("system", "system")
 DEFAULT_DISCLOSURES = {
@@ -66,11 +67,15 @@ class CmsService:
         checks: CheckRegistry | None = None,
         clock: Callable[[], datetime] = _utcnow,
         allow_self_approval: bool = False,
+        lifecycle: LifecycleConfig | None = None,
+        notify_review_due: Callable[[Item, datetime], Awaitable[None]] | None = None,
     ):
         self.s = session
         self.checks = checks or default_registry()
         self.now = clock
         self.allow_self_approval = allow_self_approval
+        self.lifecycle = lifecycle or LifecycleConfig()
+        self.notify_review_due = notify_review_due
 
     # -- reading -----------------------------------------------------------------------------------
 
@@ -276,9 +281,29 @@ class CmsService:
         await self._audit(item, "request_changes", reviewer, note=note)
         return item
 
-    async def schedule(self, org_id: str, item_id: uuid.UUID, at: datetime, actor: Actor) -> Item:
+    async def schedule(
+        self,
+        org_id: str,
+        item_id: uuid.UUID,
+        at: datetime,
+        actor: Actor,
+        *,
+        kind: str | None = None,
+        public_note: str | None = None,
+        internal_note: str = "",
+    ) -> Item:
         item = await self.get(org_id, item_id)
         self._need(item, "approved")
+        if (
+            item.published_version_id is not None
+        ):  # a republish: the log entry is decided now, applied then
+            self._check_correction(kind, public_note)
+            item.attrs = {
+                **item.attrs,
+                "pending_correction": {
+                    "kind": kind, "public_note": public_note, "internal_note": internal_note,
+                },
+            }  # fmt: skip
         if at.tzinfo is None:
             raise CmsError("schedule needs a timezone-aware time")
         item.state, item.publish_at = "scheduled", at
@@ -302,11 +327,39 @@ class CmsService:
         await self.s.flush()
         return out
 
-    async def publish(self, org_id: str, item_id: uuid.UUID, actor: Actor) -> Item:
+    @staticmethod
+    def _check_correction(kind: str | None, public_note: str | None) -> None:
+        if kind not in KINDS:
+            raise CmsError(
+                f"publishing a new version of a published item needs a kind: one of {', '.join(KINDS)}"
+            )
+        if not (public_note or "").strip():
+            raise CmsError("publishing a new version of a published item needs a public note")
+
+    async def publish(
+        self,
+        org_id: str,
+        item_id: uuid.UUID,
+        actor: Actor,
+        *,
+        kind: str | None = None,
+        public_note: str | None = None,
+        internal_note: str = "",
+        complaint_id: uuid.UUID | None = None,
+    ) -> Item:
         """Run the checks and make the approved version live. A failed blocking check raises
-        :class:`PublishBlocked` and leaves the item as it was."""
+        :class:`PublishBlocked` and leaves the item as it was. Replacing a version that is already
+        published needs a ``kind`` and a ``public_note``, which go into the item's public corrections
+        log (a scheduled republish carries them from ``schedule``)."""
         item = await self.get(org_id, item_id)
         self._need(item, "approved", "scheduled")
+        previous = item.published_version_id
+        if previous is not None:
+            pending = item.attrs.get("pending_correction") or {}
+            kind = kind or pending.get("kind")
+            public_note = public_note or pending.get("public_note")
+            internal_note = internal_note or pending.get("internal_note", "")
+            self._check_correction(kind, public_note)
         version = await self.s.get(Version, item.current_version_id)
         if version is None:
             raise CmsError("no version to publish")
@@ -318,6 +371,17 @@ class CmsService:
             var.state = "published"
         item.state, item.publish_at = "published", None
         item.published_version_id, item.published_at = version.id, self.now()
+        if previous is not None and previous != version.id:
+            self.s.add(
+                Correction(
+                    org_id=item.org_id, item_id=item.id, version_from=previous, version_to=version.id,
+                    kind=kind, public_note=(public_note or "").strip(), internal_note=internal_note,
+                    complaint_id=complaint_id, created_by=actor.sub, created_at=self.now(),
+                )
+            )  # fmt: skip
+            item.attrs = {k: v for k, v in item.attrs.items() if k != "pending_correction"}
+        if item.lifecycle != "frozen":  # a correction to a frozen item does not restart reviews
+            item.review_due_at = self.lifecycle.review_due(item.type, item.published_at)
         warnings = [n for blocking, n, r in results if not blocking and not r.passed]
         await self._audit(
             item,
@@ -339,6 +403,7 @@ class CmsService:
             if var.state == "published":
                 var.state = "ready"
         item.state, item.published_version_id, item.publish_at = "unpublished", None, None
+        item.review_due_at = None
         await self._audit(item, "unpublish", actor, reason=reason)
         return item
 
@@ -384,3 +449,171 @@ class CmsService:
             if tag != "equal"
         ]
         return Diff((a.title, b.title) if a.title != b.title else None, ops)
+
+    # -- corrections log ---------------------------------------------------------------------------
+
+    async def corrections(
+        self, org_id: str, slug: str | None = None, *, limit: int = 100
+    ) -> list[dict[str, Any]]:
+        """The public log, newest first: only entries of published items, never the internal note."""
+        q = (
+            select(Correction, Item.slug, Item.type, Version.title)
+            .join(Item, Item.id == Correction.item_id)
+            .join(Version, Version.id == Item.published_version_id)
+            .where(Correction.org_id == org_id, Item.state == "published")
+            .order_by(Correction.created_at.desc(), Correction.seq.desc())
+            .limit(max(1, min(limit, 500)))
+        )
+        if slug is not None:
+            q = q.where(Item.slug == slug)
+        return [
+            {
+                "id": str(c.id),
+                "slug": sl,
+                "type": ty,
+                "title": title,
+                "kind": c.kind,
+                "note": c.public_note,
+                "at": c.created_at,
+                "from_version": str(c.version_from) if c.version_from else None,
+                "to_version": str(c.version_to) if c.version_to else None,
+            }  # fmt: skip
+            for c, sl, ty, title in (await self.s.execute(q)).all()
+        ]
+
+    async def add_note(
+        self,
+        org_id: str,
+        item_id: uuid.UUID,
+        kind: str,
+        public_note: str,
+        actor: Actor,
+        *,
+        internal_note: str = "",
+        complaint_id: uuid.UUID | None = None,
+    ) -> Correction:
+        """A log entry without a new version (a clarification, or the outcome of a complaint)."""
+        item = await self.get(org_id, item_id)
+        if item.state != "published":
+            raise CmsError("only published items have a public log")
+        self._check_correction(kind, public_note)
+        c = Correction(
+            org_id=org_id, item_id=item.id, version_from=item.published_version_id,
+            version_to=item.published_version_id, kind=kind, public_note=public_note.strip(),
+            internal_note=internal_note, complaint_id=complaint_id, created_by=actor.sub, created_at=self.now(),
+        )  # fmt: skip
+        self.s.add(c)
+        await self.s.flush()
+        await self._audit(item, "note", actor, kind=kind)
+        return c
+
+    # -- review cadence ----------------------------------------------------------------------------
+
+    def _note_lang(self, item: Item) -> str:
+        return item.primary_lang
+
+    async def _freeze(self, item: Item, reason: str, actor: Actor) -> None:
+        at = self.now()
+        item.lifecycle, item.frozen_at, item.frozen_reason, item.review_due_at = (
+            "frozen",
+            at,
+            reason,
+            None,
+        )
+        self.s.add(
+            Correction(
+                org_id=item.org_id, item_id=item.id, version_from=item.published_version_id,
+                version_to=item.published_version_id, kind="update",
+                public_note=self.lifecycle.freeze_note(self._note_lang(item), at),
+                internal_note=f"frozen: {reason}", created_by=actor.sub, created_at=self.now(),
+            )
+        )  # fmt: skip
+        await self._audit(item, "freeze", actor, reason=reason)
+
+    async def _open_review(self, item_id: uuid.UUID) -> Review | None:
+        return (
+            await self.s.execute(
+                select(Review).where(Review.item_id == item_id, Review.decided_at.is_(None))
+            )
+        ).scalar_one_or_none()
+
+    async def run_lifecycle(self, system: Actor = SYSTEM) -> dict[str, list[uuid.UUID]]:
+        """The daily job. Items whose review is due get an open review and their editors are told
+        (once); an open review nobody decided within the grace period freezes its item. Safe to run
+        twice in a day. Returns the ids notified and the ids frozen."""
+        now = self.now()
+        notified: list[uuid.UUID] = []
+        frozen: list[uuid.UUID] = []
+        due = (
+            (
+                await self.s.execute(
+                    select(Item)
+                    .where(
+                        Item.state == "published",
+                        Item.lifecycle != "frozen",
+                        Item.review_due_at <= now,
+                    )
+                    .order_by(Item.review_due_at)
+                    .with_for_update(skip_locked=True)
+                )
+            )
+            .scalars()
+            .all()
+        )
+        for item in due:
+            review = await self._open_review(item.id)
+            if review is None:
+                review = Review(item_id=item.id, due_at=item.review_due_at)
+                self.s.add(review)
+            if review.notified_at is None:
+                review.notified_at = now
+                if self.notify_review_due:
+                    await self.notify_review_due(
+                        item, self.lifecycle.freeze_deadline(item.type, review.due_at)
+                    )
+                await self._audit(item, "review_due", system, due_at=review.due_at.isoformat())
+                notified.append(item.id)
+            if now >= self.lifecycle.freeze_deadline(item.type, review.due_at):
+                review.decided_at, review.decision, review.decided_by = now, "frozen", system.sub
+                await self._freeze(item, "auto", system)
+                frozen.append(item.id)
+        await self.s.flush()
+        return {"notified": notified, "frozen": frozen}
+
+    async def decide_review(
+        self, org_id: str, item_id: uuid.UUID, decision: str, actor: Actor, reason: str = ""
+    ) -> Item:
+        """An editor's call on a published item: ``living`` (reviewed, starts a new cycle) or ``frozen``
+        (no longer updated; a public note says so)."""
+        if decision not in ("living", "frozen"):
+            raise CmsError("decision must be living or frozen")
+        item = await self.get(org_id, item_id)
+        if item.state != "published":
+            raise CmsError("only published items are reviewed")
+        if item.lifecycle == "frozen":
+            raise CmsError("the item is already frozen; unfreeze it first")
+        now = self.now()
+        review = await self._open_review(item.id)
+        if review is None:
+            review = Review(item_id=item.id, due_at=item.review_due_at or now)
+            self.s.add(review)
+        review.decided_at, review.decision, review.decided_by = now, decision, actor.sub
+        if decision == "living":
+            item.lifecycle = "living"
+            item.review_due_at = self.lifecycle.review_due(item.type, now)
+            await self._audit(item, "review_living", actor, reason=reason)
+        else:
+            await self._freeze(item, reason or "editor decision", actor)
+        await self.s.flush()
+        return item
+
+    async def unfreeze(self, org_id: str, item_id: uuid.UUID, actor: Actor, reason: str) -> Item:
+        item = await self.get(org_id, item_id)
+        if item.lifecycle != "frozen":
+            raise CmsError("the item is not frozen")
+        if not reason.strip():
+            raise CmsError("unfreezing needs a reason")
+        item.lifecycle, item.frozen_at, item.frozen_reason = "living", None, None
+        item.review_due_at = self.lifecycle.review_due(item.type, self.now())
+        await self._audit(item, "unfreeze", actor, reason=reason)
+        return item

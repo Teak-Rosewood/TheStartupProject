@@ -5,9 +5,11 @@ from datetime import datetime
 from typing import Any
 
 from sqlalchemy import (
+    BigInteger,
     Boolean,
     DateTime,
     ForeignKey,
+    Identity,
     Index,
     Integer,
     Text,
@@ -123,3 +125,40 @@ class DisclosureTemplate(Base):
     )  # ai_assistance | methodology | conflict
     lang: Mapped[str] = mapped_column(Text, primary_key=True)
     text: Mapped[str] = mapped_column(Text)
+
+
+class Correction(Base):
+    """One entry in an item's public log of corrections, clarifications and updates."""
+
+    __tablename__ = "cms_corrections"
+
+    id: Mapped[uuid.UUID] = _pk()
+    seq: Mapped[int] = mapped_column(BigInteger, Identity())
+    org_id: Mapped[str] = mapped_column(Text)
+    item_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("cms_items.id", ondelete="CASCADE"))
+    version_from: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("cms_versions.id")
+    )
+    version_to: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("cms_versions.id")
+    )
+    kind: Mapped[str] = mapped_column(Text)  # correction | clarification | update
+    public_note: Mapped[str] = mapped_column(Text)
+    internal_note: Mapped[str] = mapped_column(Text, server_default="")  # never leaves the CMS
+    complaint_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    created_by: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(_TS, server_default=func.now())
+
+
+class Review(Base):
+    """A due review of a published item: keep it living, or freeze it. Open until decided."""
+
+    __tablename__ = "cms_reviews"
+
+    id: Mapped[uuid.UUID] = _pk()
+    item_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("cms_items.id", ondelete="CASCADE"))
+    due_at: Mapped[datetime] = mapped_column(_TS)
+    notified_at: Mapped[datetime | None] = mapped_column(_TS)
+    decided_at: Mapped[datetime | None] = mapped_column(_TS)
+    decision: Mapped[str | None] = mapped_column(Text)  # living | frozen
+    decided_by: Mapped[str | None] = mapped_column(Text)

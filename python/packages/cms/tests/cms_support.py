@@ -11,7 +11,7 @@ BASE_URL = os.environ.get(
 # A database of its own: other suites drop shared tables while they run.
 URL = BASE_URL.rsplit("/", 1)[0] + "/tsp_cms_test"
 TABLES = (
-    "cms_disclosure_templates, cms_check_results, cms_variants, cms_items, cms_versions, "
+    "cms_corrections, cms_reviews, cms_disclosure_templates, cms_check_results, cms_variants, cms_items, cms_versions, "
     "jobs, cron_jobs, audit_log, alembic_version"
 )
 ORG, OTHER = "org-1", "org-2"
