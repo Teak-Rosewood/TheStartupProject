@@ -1,6 +1,6 @@
 # Roadmap
 
-Phases 1–7 are reconstructed from the phase references across the docs and are assumed complete for planning; phase 7 is partly built (flags, uploads, metering, AI gateway and the web app are in the code; the mobile starter and its docs are not yet). Phase 8 onward is new. The reasoning behind phases 9–12 is in the [October 2026 project review](review-2026-10.md).
+Phases 1–7 are reconstructed from the phase references across the docs and are assumed complete for planning; phase 7 is built (flags, uploads, metering, AI gateway, web app, and an Expo mobile starter that is source only and not yet built or run). Phase 8 onward is new. The reasoning behind phases 9–12 is in the [October 2026 project review](review-2026-10.md).
 
 | Phase | Scope | Status |
 |---|---|---|
@@ -11,7 +11,7 @@ Phases 1–7 are reconstructed from the phase references across the docs and are
 | 4 | Payments: Razorpay, Stripe, GST invoices, credits | done |
 | 5 | Background jobs, email, push, SMS, in-app | done |
 | 6 | Landing page, SEO, waitlist, events, referrals, metrics | done |
-| 7 | Feature flags, uploads, AI usage metering and gateway, web and mobile starters | in progress |
+| 7 | Feature flags, uploads, AI usage metering and gateway, web and mobile starters | done (mobile is source only) |
 | **8** | **Vector search and RAG** | planned (below) |
 | **8b** | **Web ingestion: scraping into vector search, live web tools** | planned (below) |
 | K1–K8 | Content and data platform modules: source connectors, knowledge graph, AI workflows, editorial CMS, paywall, engagement, trend signals, languages and distribution | planned (after 8b; see below) |
