@@ -22,6 +22,7 @@ How long each kind of data stays, and why. Engineering should implement these as
 | Uploaded files | life of the account; removed with the account | contract; stored per organization in a private bucket |
 | AI usage records (model, tokens, credits; no prompt text) | 13 months | billing disputes and support |
 | AI model catalog | replaced daily | operations; contains no personal data |
+| Search index (passages and vectors of documents users add) | life of the document or account; removed within the same request as the document | contract; the passages are copies of the user's content |
 | Support conversations | 2 years after closure | support quality; legal claims |
 | Marketing leads and waitlist | until unsubscribe, plus 30 days; double opt-in proof for 3 years | consent |
 | Inactive accounts | warn at 12 months of inactivity, delete after 24 **(optional policy)** | data minimisation |

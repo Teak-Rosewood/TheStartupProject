@@ -43,4 +43,34 @@ The brief in `docs/plans/08-vector.md` listed routes without the organization in
 - Ids are text (hex) like the rest of the kit, not UUID columns.
 - Row-level security is on the chunk table only. Collections and documents hold no vectors and stay readable across organizations so that erasing a user's account can find their documents.
 - Chunk size is estimated as 4 characters per token; sizes are approximate.
-- Not built yet: the `/v1/retrieve` gateway route and `retrieval` on chat completions, the `tsp-vector` CLI, the evaluation set, the infra `VectorConfig` and alarms, and wiring into `apps/api`. They follow phase 8-D and 8.5 of the roadmap.
+- Not built yet: the `/v1/retrieve` gateway route and `retrieval` on chat completions (roadmap 8.5), the ingest-queue and search-latency alarms (the app does not publish those metrics yet), and a scheduled CI job for the evaluation (it needs real provider keys, so it runs on demand).
+
+## In the sample API
+`apps/api` turns vector search on when an AI provider key is set (it needs an embedding model). Settings, all optional:
+
+| Variable | Meaning |
+|---|---|
+| `TSP_AI_EMBEDDING_MODELS` | `provider:model[:dims]`, comma separated, for example `openai:text-embedding-3-small:1536`. Not needed when the verified model catalog lists embedding models |
+| `VECTOR_EMBED_MODEL` | model new collections use (default `text-embedding-3-small`) |
+| `VECTOR_DIMS` | vector size; fixed per database at the first migration (default 1024) |
+| `VECTOR_BACKEND` | `pgvector` (default) or `s3vectors` (needs `VECTOR_S3_BUCKET`) |
+| `VECTOR_MAX_CHUNKS_PER_ORG` | cap on stored passages per organization when the plan sets none |
+
+Plan features `vector_docs` and `vector_chunks` in `plans.toml` cap documents and passages per plan. The flag `kill:vector` switches the routes off. In AWS set these through `EnvConfig.vector` (`VectorConfig`): `mode="s3vectors"` adds a retained vector bucket and gives the API task access to it only.
+
+Many embedding models return fewer dimensions than 1024 (OpenAI `text-embedding-3-small` returns 1536, and can be asked for fewer). Pick one size, set `VECTOR_DIMS` to it before the first migration, and keep to models that return it.
+
+## Command line and quality check
+```bash
+uv run tsp-vector ingest --org ORG --collection recipes --path docs/
+uv run tsp-vector search --org ORG --collection recipes "how long do I sear salmon"
+uv run tsp-vector eval --org ORG --collection recipes --questions python/packages/vector/tests/eval/questions.json --save-baseline baseline.json
+uv run tsp-vector eval ... --baseline baseline.json --max-drop 5     # exits 1 when recall@5 or MRR falls more than 5 points
+```
+`tests/eval` holds a small recipe corpus and 20 labelled questions (the label is the document name). The unit test runs them with a crude word-hash embedder; run the command with a real model to judge a model or chunk-size change.
+
+## Runbook
+- **Rebuild the index:** `DROP INDEX ix_vector_chunks_embedding; CREATE INDEX ix_vector_chunks_embedding ON vector_chunks USING hnsw (embedding halfvec_cosine_ops) WITH (m = 16, ef_construction = 64);` (raise `maintenance_work_mem` first on big tables and watch database memory).
+- **Re-embed an organization:** `tsp-vector reembed --org ORG --collection NAME --model NEW`, or request it through `VectorService.request_reembed` (queues the job). Old vectors stay searchable until the switch.
+- **Move a collection to S3 Vectors:** not automated. Create the collection with the S3 backend, re-ingest from the sources, then delete the old documents. Chunk text is kept in the store, so `store.chunks()` plus a re-embed also works.
+- **Sub-processors:** list your embedding provider(s) and, with S3 Vectors, AWS, in [sub-processors](../legal/subprocessors.md); mention stored passages in the retention schedule (done: see [data retention](../legal/data-retention.md)).

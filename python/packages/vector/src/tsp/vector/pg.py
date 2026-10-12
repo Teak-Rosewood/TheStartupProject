@@ -53,8 +53,17 @@ def _rows(org_id: str, collection_id: str, items: list[VectorItem]) -> list[dict
 class PgVectorStore:
     """pgvector in the application database. Opens one short transaction per call, scoped to the org."""
 
-    def __init__(self, db: Database):
-        self.db = db
+    def __init__(self, db: Database | None = None):
+        self._db = db
+
+    def bind(self, db: Database) -> None:
+        self._db = db
+
+    @property
+    def db(self) -> Database:
+        if self._db is None:
+            raise RuntimeError("PgVectorStore has no database; pass db= or call bind(db)")
+        return self._db
 
     async def upsert(self, org_id: str, collection_id: str, items: list[VectorItem]) -> None:
         if not items:

@@ -81,11 +81,22 @@ class VectorService:
 
     store: Any
     embedder: Embedder
-    db: Database
+    db: Database | None = None  # or call bind() once the app's database exists
     config: VectorConfig = field(default_factory=VectorConfig)
     reader: Reader | None = None
     limits: Limits | None = None
     reranker: Reranker | None = None
+
+    def bind(self, db: Database) -> None:
+        """Attach the app's database (created at startup) to the service and to a store that needs it."""
+        self.db = db
+        if hasattr(self.store, "bind"):
+            self.store.bind(db)
+
+    def _session(self) -> Any:
+        if self.db is None:
+            raise RuntimeError("VectorService has no database; pass db= or call bind(db)")
+        return self.db.session()
 
     # -- collections -------------------------------------------------------------------------
 
@@ -274,7 +285,7 @@ class VectorService:
     async def ingest(self, document_id: str) -> None:
         """Extract, chunk, embed and store one document. Safe to run twice; permanent problems
         (unreadable file, over plan limit) mark the document failed instead of retrying forever."""
-        async with self.db.session() as s:
+        async with self._session() as s:
             doc = await s.get(Document, document_id)
             if doc is None or doc.status in ("ready", "deleting"):
                 return
@@ -296,7 +307,7 @@ class VectorService:
             )
             if not pieces:
                 raise UnsupportedDocument("no text found in this document")
-            async with self.db.session() as s:
+            async with self._session() as s:
                 await self._check_chunk_limit(s, org_id, len(pieces))
             vectors, tokens = await self._embed([p.content for p in pieces], model, "document")
             items: list[VectorItem] = [
@@ -319,7 +330,7 @@ class VectorService:
         except Exception as e:
             await self._mark(document_id, "failed", f"{type(e).__name__}: {e}"[:500])
             raise
-        async with self.db.session() as s:
+        async with self._session() as s:
             doc = await s.get(Document, document_id)
             if doc is None or doc.status == "deleting":  # deleted while we were working
                 await self.store.delete_document(org_id, document_id)
@@ -342,7 +353,7 @@ class VectorService:
             raise LimitExceeded(f"your plan allows {cap} indexed passages")
 
     async def _mark(self, document_id: str, status: str, error: str | None) -> None:
-        async with self.db.session() as s:
+        async with self._session() as s:
             doc = await s.get(Document, document_id)
             if doc is not None and doc.status != "deleting":
                 doc.status, doc.error = status, error
@@ -462,7 +473,7 @@ class VectorService:
     async def reembed(self, collection_id: str, model: str) -> None:
         """New vectors are written beside the old ones (queries keep using the old model); when every
         document is done the collection switches and the old vectors go."""
-        async with self.db.session() as s:
+        async with self._session() as s:
             col = await s.get(Collection, collection_id)
             if col is None or col.embed_model == model:
                 return
@@ -501,7 +512,7 @@ class VectorService:
                     for r, v in zip(rows, vectors, strict=True)
                 ],
             )
-        async with self.db.session() as s:
+        async with self._session() as s:
             col = await s.get(Collection, collection_id)
             assert col is not None
             col.embed_model = model

@@ -40,6 +40,16 @@ from tsp.server import (
 )
 from tsp.storage import LocalObjectStore, S3ObjectStore, UploadPolicy, Uploads
 from tsp.storage import build_router as storage_router
+from tsp.vector import (
+    PgVectorStore,
+    S3VectorStore,
+    VectorConfig,
+    VectorService,
+    ai_embedder,
+)
+from tsp.vector import build_router as vector_router
+from tsp.vector import register_jobs as vector_jobs
+from tsp.vector import register_with_compliance as vector_compliance
 
 from .ai import AiGateway, catalog_lifespan, register_catalog_jobs
 from .ai import build_router as build_ai_router
@@ -110,6 +120,14 @@ def build_llm() -> LLMClient | None:
             f"TSP_AI_CATALOG={catalog} does not exist; run `tsp-ai verify` or unset it"
         )
     client = LLMClient.from_env(catalog=catalog)
+    # Embedding models without a verified catalog: TSP_AI_EMBEDDING_MODELS="openai:text-embedding-3-small:1536,..."
+    by_platform: dict[str, dict[str, int | None]] = {}
+    for entry in filter(None, os.environ.get("TSP_AI_EMBEDDING_MODELS", "").split(",")):
+        platform, model, *dims = entry.strip().split(":")
+        by_platform.setdefault(platform, {})[model] = int(dims[0]) if dims else None
+    for platform, models in by_platform.items():
+        if platform in client._router._providers:
+            client._router.set_embedding_models(platform, models)
     return client if client._router._providers else None
 
 
@@ -123,6 +141,50 @@ async def llm_lifespan_cm(client: LLMClient) -> AsyncIterator[None]:
 
 def llm_lifespan(client: LLMClient) -> Any:
     return lambda _app: llm_lifespan_cm(client)
+
+
+def build_vector(
+    settings: Settings,
+    llm: LLMClient,
+    uploads: Uploads,
+    flags: Flags,
+    payments: Any | None,
+) -> VectorService:
+    """Vector search over the app database (default) or S3 Vectors (VECTOR_BACKEND=s3vectors)."""
+    cfg = VectorConfig(
+        dims=int(os.environ.get("VECTOR_DIMS", "1024")),
+        embed_model=os.environ.get("VECTOR_EMBED_MODEL", "text-embedding-3-small"),
+    )
+    store: Any
+    if os.environ.get("VECTOR_BACKEND") == "s3vectors":
+        store = S3VectorStore(os.environ["VECTOR_S3_BUCKET"], settings.aws_region, dims=cfg.dims)
+    else:
+        store = PgVectorStore()
+    max_chunks = os.environ.get("VECTOR_MAX_CHUNKS_PER_ORG")
+
+    async def limits(session: Any, org_id: str) -> dict[str, int | None]:
+        feats = (await payments.entitlements(session, org_id)).features if payments else {}
+        return {
+            "vector_docs": feats.get("vector_docs"),
+            "vector_chunks": feats.get("vector_chunks")
+            or (int(max_chunks) if max_chunks else None),
+        }
+
+    return VectorService(
+        store, ai_embedder(llm), config=cfg, reader=uploads.store.get, limits=limits
+    )
+
+
+def vector_lifespan(service: VectorService) -> Any:
+    """Hand the service the app's database once the app has created it."""
+
+    @asynccontextmanager
+    async def run(app: Any) -> AsyncIterator[None]:
+        if getattr(app.state, "db", None) is not None:
+            service.bind(app.state.db)
+        yield
+
+    return run
 
 
 def build_admin_settings(env: dict[str, str] | None = None) -> AdminSettings | None:
@@ -164,10 +226,16 @@ def build_app() -> FastAPI:
     flags = Flags()
     uploads = build_uploads(settings)
     uploads.register_with_compliance(compliance)
+    vector = build_vector(settings, llm, uploads, flags, payments) if llm is not None else None
+    if vector is not None:
+        vector_jobs(registry, vector)
+        vector_compliance(compliance, vector)
     # Stage 0 runs jobs inside the API process (no memory for a second container); set
     # TSP_JOBS_INLINE=0 when you run `tsp-jobs worker` separately.
     inline = os.environ.get("TSP_JOBS_INLINE", "1") == "1"
     background: list[Any] = [worker_lifespan(registry)] if inline else []
+    if vector is not None:
+        background.insert(0, vector_lifespan(vector))  # before the worker starts taking jobs
     if llm is not None:
         background.insert(0, llm_lifespan(llm))
         background.append(catalog_lifespan(llm))
@@ -237,6 +305,16 @@ def build_app() -> FastAPI:
         )
         app.state.ai_gateway = gateway
         app.include_router(build_ai_router(gateway), prefix=settings.api_prefix)
+    if vector is not None:
+
+        async def vector_killed(s: Any) -> bool:
+            return await flags.killed(s, "vector")
+
+        app.state.vector = vector
+        app.include_router(
+            vector_router(vector, api.account, api.org_member, db_session, killed=vector_killed),
+            prefix=settings.api_prefix,
+        )
     app.state.flags = flags
     # Demo routes: refuse accounts pending deletion; writes also need accepted terms and privacy.
     app.include_router(router, prefix=settings.api_prefix, dependencies=[Depends(active)])
