@@ -1,13 +1,22 @@
 # TheStartupProject
 
-A cloneable kit of building blocks for starting a company's software: pick the modules you need and wire them into your app. Python modules install under one `tsp.*` namespace; JavaScript packages will sit beside them.
+A cloneable kit of building blocks for starting a company's software: pick the modules you need and wire them into your app. Python modules install under one `tsp.*` namespace; JavaScript packages sit beside them.
 
-| Module | Package | Status | Docs |
-|---|---|---|---|
-| AI: multi-provider LLM client, router, OpenAI-compatible server | `tsp-ai` (`tsp.ai`) | ready | [docs/modules/ai.md](docs/modules/ai.md) |
-| Web / React / React Native | `js/` | planned | [js/README.md](js/README.md) |
-| AWS backend: edge, server, auth, SQL, NoSQL, cache, CI/CD | `tsp-infra`, `tsp-server`, `tsp-auth`, `tsp-db`, `tsp-nosql`, `tsp-cache` | designed (docs done, modules in progress) | [docs/aws](docs/aws/README.md) |
-| Payments | | planned | |
+| Module | Packages | Docs |
+|---|---|---|
+| Multi-provider LLM client, router, verified model catalog, OpenAI-compatible server | tsp-ai | [docs/modules/ai.md](docs/modules/ai.md) |
+| FastAPI app factory, Cognito JWT verification, async SQL and migrations, Valkey helpers, DynamoDB helper | tsp-server, tsp-auth, tsp-db, tsp-cache, tsp-nosql | [docs/aws/13-library-modules.md](docs/aws/13-library-modules.md) |
+| AWS CDK constructs: edge, server, auth, SQL, NoSQL, cache, CI/CD | tsp-infra | [docs/aws/README.md](docs/aws/README.md) |
+| Users, organizations, invites, API keys; staff console with its own MFA login | tsp-accounts, tsp-admin | [docs/modules/accounts-admin.md](docs/modules/accounts-admin.md) |
+| Append-only audit log; consent, data export and deletion, legal document rendering | tsp-audit, tsp-compliance | [docs/modules/compliance.md](docs/modules/compliance.md) |
+| Razorpay and Stripe, GST invoices, credits ledger, entitlements | tsp-payments | [docs/modules/payments.md](docs/modules/payments.md) |
+| Postgres job queue and schedules; email, push, SMS, in-app notifications | tsp-jobs, tsp-notify | [docs/modules/jobs-notify.md](docs/modules/jobs-notify.md) |
+| Waitlist, first-party events, attribution, referrals, metrics | tsp-growth | [docs/modules/growth.md](docs/modules/growth.md) |
+| Feature flags and kill switches, direct-to-S3 uploads, usage metering and the AI gateway | tsp-flags, tsp-storage, tsp-metering | [docs/modules/product-ops.md](docs/modules/product-ops.md) |
+| Web app (React) and landing site (Astro) | `js/packages/web-app`, `js/packages/landing` | [js/README.md](js/README.md) |
+| Mobile starter (Expo, source only) | `js/packages/mobile` | [js/README.md](js/README.md) |
+
+Planned work is in [docs/roadmap.md](docs/roadmap.md).
 
 ## Quick start
 
@@ -38,7 +47,7 @@ More: [Getting started](docs/getting-started.md) · [Startup guide](docs/startup
 
 ```
 python/            uv workspace: packages/<module>/src/tsp/<module>
-js/                future JavaScript packages
+js/                web app, landing site, mobile starter
 docs/              guides per module, hosting
 .github/           CI
 ```

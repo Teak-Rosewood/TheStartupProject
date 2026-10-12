@@ -27,8 +27,9 @@ backup-test: ## prove backup and point-in-time restore end to end (needs docker)
 legal-check: ## every {{placeholder}} in docs/legal is defined in company.example.toml
 	python3 docs/legal/check_placeholders.py
 
-docs-check:  ## relative Markdown links resolve
+docs-check:  ## doc links resolve and every package is listed in the docs
 	python3 docs/check_links.py
+	python3 docs/check_modules.py
 
 legal-render: ## render docs/legal into python/apps/api/legal (uses docs/legal/company.toml, else the example)
 	cd python && C=../docs/legal/company.toml; [ -f $$C ] || C=../docs/legal/company.example.toml; \
