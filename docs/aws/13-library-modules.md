@@ -16,6 +16,9 @@
 | `tsp-payments` (`tsp.payments`) | runtime | Razorpay/Stripe, GST invoices, credits ledger, entitlements; see [payments](../modules/payments.md) |
 | `tsp-audit` (`tsp.audit`) | runtime | append-only audit log (database trigger) |
 | `tsp-compliance` (`tsp.compliance`) | runtime | consent by document version, data export and deletion, legal rendering; see [compliance](../modules/compliance.md) |
+| `tsp-flags` (`tsp.flags`) | runtime | feature flags, rollouts, kill switches; see [product operations](../modules/product-ops.md) |
+| `tsp-storage` (`tsp.storage`) | runtime | presigned uploads with size/type limits, per-org prefixes and quotas |
+| `tsp-metering` (`tsp.metering`) | runtime | usage records and token-to-credit pricing |
 | `tsp-ai` (`tsp.ai`) | runtime | multi-provider LLM client and server (already built) |
 
 Runtime modules take explicit URLs and parameters and know nothing about each other, so you can use any one alone. Only `tsp.server` reads environment settings and wires the others together. The deployable sample service lives in `python/apps/api`, and the CDK app in `python/apps/infra`.

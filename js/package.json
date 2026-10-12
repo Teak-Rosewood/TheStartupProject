@@ -1,5 +1,5 @@
 {
   "name": "thestartupproject-js",
   "private": true,
-  "workspaces": ["packages/*"]
+  "workspaces": ["packages/landing", "packages/web-app"]
 }

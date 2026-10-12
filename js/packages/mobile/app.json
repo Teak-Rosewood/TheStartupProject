@@ -1,0 +1,14 @@
+{
+  "expo": {
+    "name": "My Startup",
+    "slug": "my-startup",
+    "scheme": "mystartup",
+    "version": "0.1.0",
+    "extra": {
+      "apiBase": "https://app.example.com/api",
+      "issuer": "https://cognito-idp.ap-south-1.amazonaws.com/POOL_ID",
+      "clientId": "MOBILE_CLIENT_ID",
+      "hostedLoginUrl": "https://tsp-prod.auth.ap-south-1.amazoncognito.com"
+    }
+  }
+}

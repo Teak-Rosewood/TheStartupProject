@@ -15,13 +15,13 @@ Status as of the last update to this file. "Planned" items are scheduled in the 
 | Payments for India (Razorpay), GST invoices, credits ledger, Stripe, marketplace splits | built and tested against recorded payloads; needs a gateway test-mode run | `tsp.payments`, [docs](../modules/payments.md) |
 | Background jobs, email, push, SMS, in-app | built and tested; needs SES setup and a live send | `tsp.jobs`, `tsp.notify`, [docs](../modules/jobs-notify.md) |
 | Landing page, SEO, waitlist, events, attribution, referrals, metrics | built and verified; needs your copy, a real OG image and Lighthouse in CI | `js/packages/landing`, `tsp.growth`, [docs](../modules/growth.md) |
-| Feature flags, file uploads, AI usage metering, web and mobile starters | planned, phase 7 | `tsp.flags`, `tsp.storage`, `js/` |
+| Feature flags, kill switches, file uploads, AI gateway with usage metering | built and tested; needs live check and a malware scanner if you accept untrusted files | `tsp.flags`, `tsp.storage`, `tsp.metering`, [docs](../modules/product-ops.md) |
+| Web app (sign-in, orgs, billing, settings, API keys) and mobile starter | web app built, tested and bundled; mobile is source only and was not built or run here | `js/packages/web-app`, `js/packages/mobile` |
 
 ## Known gaps in the repo today
 - The first live deployment has not happened; runbooks and costs are unverified against a real account.
 - CloudWatch logs are kept 14 days. Indian CERT-In directions expect security-relevant logs for a rolling 180 days **(verify)**; raise it before production (made configurable in phase 2).
-- `tsp.ai` is not yet mounted in `tsp.server`; there is no per-customer quota or usage billing.
-- There is no frontend beyond a placeholder page.
+- The web app and landing site have never been served from a real CloudFront distribution.
 - No SOC 2 / ISO 27001 material, no penetration-test guidance beyond the checklist, no multi-region design.
 
 ## Not covered at all (decide deliberately)

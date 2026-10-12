@@ -19,6 +19,9 @@ How long each kind of data stays, and why. Engineering should implement these as
 | Email outbox (recipient, template, status) | 13 months | delivery proof; recipient is replaced by a hash when the user is deleted |
 | Analytics events (first-party) | 400 days | product analytics; no personal data in properties; linked to an account only after sign-in |
 | Waitlist signups | confirmed: until unsubscribe; unconfirmed: deleted after 30 days | consent (double opt-in) |
+| Uploaded files | life of the account; removed with the account | contract; stored per organization in a private bucket |
+| AI usage records (model, tokens, credits; no prompt text) | 13 months | billing disputes and support |
+| AI model catalog | replaced daily | operations; contains no personal data |
 | Support conversations | 2 years after closure | support quality; legal claims |
 | Marketing leads and waitlist | until unsubscribe, plus 30 days; double opt-in proof for 3 years | consent |
 | Inactive accounts | warn at 12 months of inactivity, delete after 24 **(optional policy)** | data minimisation |
