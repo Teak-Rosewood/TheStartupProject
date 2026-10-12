@@ -47,6 +47,7 @@ members = [
     "tsp-server",
     "tsp-sources",
     "tsp-storage",
+    "tsp-trends",
     "tsp-vector",
 ]
 
@@ -8177,6 +8178,39 @@ requires-dist = [
     { name = "tsp-audit", editable = "packages/audit" },
     { name = "tsp-db", editable = "packages/db" },
 ]
+
+[[package]]
+name = "tsp-trends"
+version = "0.1.0"
+source = { editable = "packages/trends" }
+dependencies = [
+    { name = "fastapi" },
+    { name = "sqlalchemy", version = "2.0.54", source = { registry = "https://pypi.org/simple" }, extra = ["asyncio"], marker = "python_full_version < '3.11'" },
+    { name = "sqlalchemy", version = "2.1.4", source = { registry = "https://pypi.org/simple" }, extra = ["asyncio"], marker = "python_full_version >= '3.11'" },
+    { name = "tsp-audit" },
+    { name = "tsp-crawl" },
+    { name = "tsp-db" },
+    { name = "tsp-jobs" },
+    { name = "tsp-sources" },
+]
+
+[package.optional-dependencies]
+admin = [
+    { name = "sqladmin" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastapi", specifier = ">=0.110" },
+    { name = "sqladmin", marker = "extra == 'admin'", specifier = ">=0.16" },
+    { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2" },
+    { name = "tsp-audit", editable = "packages/audit" },
+    { name = "tsp-crawl", editable = "packages/crawl" },
+    { name = "tsp-db", editable = "packages/db" },
+    { name = "tsp-jobs", editable = "packages/jobs" },
+    { name = "tsp-sources", editable = "packages/sources" },
+]
+provides-extras = ["admin"]
 
 [[package]]
 name = "tsp-vector"
