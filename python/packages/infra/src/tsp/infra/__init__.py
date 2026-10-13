@@ -6,6 +6,7 @@ from .config import (
     AuthConfig,
     CacheConfig,
     ComputeConfig,
+    CrawlConfig,
     DatabaseConfig,
     DomainConfig,
     EdgeConfig,
@@ -22,6 +23,7 @@ from .nag import enable_checks
 from .stacks import AppStage, new_app
 
 __all__ = [
+    "CrawlConfig",
     "VectorConfig",
     "AiConfig",
     "UploadsConfig",

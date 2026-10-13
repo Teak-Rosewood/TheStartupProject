@@ -3,10 +3,12 @@ Format: [Keep a Changelog](https://keepachangelog.com). Versioning: [SemVer](htt
 
 ## Unreleased
 ### Added
+- `tsp.crawl` (8b): safe website fetching, sources and pages, plan/fetch/refresh jobs, API, optional browser render worker with its own job queue (`tsp.jobs` queue column), CDK `CrawlConfig`.
 - `tsp.ai`: multi-provider LLM client, router, verified model catalog, OpenAI-compatible server.
 - AWS backend stack: `tsp.infra`, `tsp.server`, `tsp.auth`, `tsp.db`, `tsp.cache`, `tsp.nosql`, CI/CD workflows, runbooks (`docs/aws`).
 - Legal templates and startup guides (`docs/legal`, `docs/startup`).
 - `tsp.distribute`: newsletters, share cards with Devanagari support, structured data, sitemaps, labelled AI illustrations.
+- `tsp.cms` K4-C: complaints desk with deadlines and escalation, restricted-mode windows, admin views; the CMS is wired into the sample API.
 - `tsp.cms` K4-B: public corrections log and RSS, review cadence with automatic freezing, `is_refreshable`.
 - `tsp.i18n`: message catalogs, language negotiation, hreflang; Hindi-aware full-text search in `tsp.vector`.
 - `tsp.vector`: pgvector and S3 Vectors stores, hybrid search, chunking, ingestion jobs; pgvector in the Postgres image.

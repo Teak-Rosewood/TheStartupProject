@@ -162,3 +162,69 @@ class Review(Base):
     decided_at: Mapped[datetime | None] = mapped_column(_TS)
     decision: Mapped[str | None] = mapped_column(Text)  # living | frozen
     decided_by: Mapped[str | None] = mapped_column(Text)
+
+
+class Complaint(Base):
+    __tablename__ = "cms_complaints"
+
+    id: Mapped[uuid.UUID] = _pk()
+    seq: Mapped[int] = mapped_column(BigInteger, Identity(), unique=True)
+    org_id: Mapped[str] = mapped_column(Text)
+    item_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("cms_items.id", ondelete="SET NULL")
+    )
+    complainant_name: Mapped[str] = mapped_column(Text)
+    email: Mapped[str] = mapped_column(Text)
+    category: Mapped[str] = mapped_column(Text)
+    body: Mapped[str] = mapped_column(Text)
+    received_at: Mapped[datetime] = mapped_column(_TS, server_default=func.now())
+    acknowledged_at: Mapped[datetime | None] = mapped_column(_TS)
+    ack_due_at: Mapped[datetime | None] = mapped_column(_TS)
+    resolve_due_at: Mapped[datetime | None] = mapped_column(_TS)
+    # received | acknowledged | in_progress | resolved | rejected | escalated
+    status: Mapped[str] = mapped_column(Text, server_default="received")
+    level: Mapped[int] = mapped_column(Integer, server_default="1")
+    assigned_to: Mapped[str | None] = mapped_column(Text)
+    resolution: Mapped[str | None] = mapped_column(Text)
+    correction_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("cms_corrections.id")
+    )
+    closed_at: Mapped[datetime | None] = mapped_column(_TS)
+    ack_warned_at: Mapped[datetime | None] = mapped_column(_TS)
+    resolve_warned_at: Mapped[datetime | None] = mapped_column(_TS)
+
+    @property
+    def reference(self) -> str:
+        """What the complainant quotes: short, stable, and not the row id."""
+        return f"C-{self.received_at.year}-{self.seq:06d}"
+
+
+class ComplaintEvent(Base):
+    """Everything that happened to a complaint, in order. Internal: never shown to the complainant."""
+
+    __tablename__ = "cms_complaint_events"
+
+    id: Mapped[uuid.UUID] = _pk()
+    complaint_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("cms_complaints.id", ondelete="CASCADE")
+    )
+    at: Mapped[datetime] = mapped_column(_TS, server_default=func.now())
+    actor: Mapped[str] = mapped_column(Text)
+    kind: Mapped[str] = mapped_column(Text)
+    note: Mapped[str] = mapped_column(Text, server_default="")
+
+
+class Window(Base):
+    """A period (optionally one region) in which extra publishing rules apply, such as an election."""
+
+    __tablename__ = "cms_windows"
+
+    id: Mapped[uuid.UUID] = _pk()
+    org_id: Mapped[str] = mapped_column(Text)
+    name: Mapped[str] = mapped_column(Text)
+    starts_at: Mapped[datetime] = mapped_column(_TS)
+    ends_at: Mapped[datetime] = mapped_column(_TS)
+    region: Mapped[str | None] = mapped_column(Text)
+    rules: Mapped[dict[str, Any]] = mapped_column(JSONB, server_default="{}")
+
+    __table_args__ = (UniqueConstraint("org_id", "name", name="uq_cms_windows_name"),)

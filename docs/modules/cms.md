@@ -50,6 +50,27 @@ The editor API gains `POST /cms/items/{id}/review`, `/unfreeze` and `/notes`, an
 
 Rollback: migration `cms_0002` only adds the `cms_corrections` and `cms_reviews` tables; downgrading drops them (the log is lost, content is not).
 
+## Complaints desk
+
+`ComplaintsDesk(session, config=, mailer=, notify_staff=)` (`mailer` is a `tsp.notify` `Notifier`). A complaint moves `received → acknowledged → in_progress → resolved` or `rejected`, or `escalated`, and every step is an event (internal, never shown to the complainant) and an audit entry.
+
+- **Intake:** `POST /public/cms/complaints` (name, email, category, message of 10–5000 characters, optional page slug). Rate limited per address through `tsp.cache`, a captcha hook (`tsp.growth.Captcha` fits), and a hidden honeypot field that silently drops bots. The reply is only the reference number (`C-2026-000123`). The reader gets a receipt email with it; staff get a notice.
+- **Deadlines are configuration** (`ComplaintsConfig`): `ack_hours` for a person to acknowledge, up to three `Level(handler, resolve_days)` entries for who handles it at each level and how long they have, categories, and how long before a deadline staff are warned. The defaults (72 hours; 30, 15, 15 days; desk, editor-in-chief, ombudsman) are neutral placeholders: set the values your rules require.
+- **Hourly job `cms.complaints_sla`:** warns staff once before a deadline, and escalates a missed one to the next level (new handler, new deadline). A complaint already at the last level is flagged as overdue and looked at again a week later. Closed complaints are ignored. Staff routes under `/cms/complaints` let editors and reviewers read, acknowledge, assign and note; only reviewers resolve, reject and escalate.
+- **Resolving with a correction:** `resolve(..., correction=("correction", "public note"))` adds an entry to the page's public log and links it (`correction_id`, and the log entry carries `complaint_id`). The public feed never shows the complaint, only the note.
+- **Reports:** `GET /cms/complaints/report?month=2026-03` (counts by category and status, escalations, median hours to acknowledge and days to close) and `report.csv` (one row per complaint without names, emails or text, safe to share with an auditor).
+- **Personal data:** a complainant's records are exported with their account data (matched by email) and erased by removing name, email, message and the free-text notes about them. Category, dates, level and outcome stay, so statistics and regulator evidence survive. Anonymous complainants can be erased by email on request through the same eraser.
+
+## Restricted-mode windows
+
+`Windows(session).create(org, name, starts_at, ends_at, region=None, rules={...})`, `active(org, at, region)`. Rules: `block_types` (item types that cannot publish while the window is open) and `require_check` (attestations the item must carry in `attrs["attested"]`). `WindowRules` is the publish check that applies them; register it with `registry.register("*", WindowRules())`. A window with a region applies to items whose `attrs["region"]` matches, a window without one to everything. The job `cms.windows_sync` (every minute, given `flags=`) sets a `tsp.flags` flag `cms.window.<name>` on while the window is open, so other modules can react without knowing about the CMS. The flag key does not include the organization: use distinct window names if several organizations share a database.
+
+## In the sample app
+
+`apps/api` mounts the editor routes (`/api/cms/...`), the staff complaints routes, and registers the three CMS jobs, the review reminder, the complaint notices and the compliance hooks. Roles come from organization membership: owners and admins are editor and reviewer, members editors; with several organizations send `X-Org-Id`. Set `CMS_PUBLIC_ORG` to the publishing organization's id to turn on the public routes (`/api/public/cms/corrections`, the RSS feeds and `/api/public/cms/complaints`). Other settings: `CMS_EDITOR_EMAILS` (comma separated; reminders and notices go there), `CMS_REVIEW_AFTER_DAYS`, `CMS_AUTO_FREEZE_AFTER_DAYS`, `CMS_COMPLAINT_ACK_HOURS`, `CMS_COMPLAINT_LEVELS` (`desk:30,chief:15,ombudsman:15`), `CMS_COMPLAINT_CATEGORIES`. The staff console shows read-only views of items, corrections, reviews, complaints, complaint events and windows (support and superadmin roles; there is no create or edit in the console).
+
+Rollback: migration `cms_0003` only adds `cms_complaints`, `cms_complaint_events` and `cms_windows`; downgrading drops them, so export the complaints report first if you have live complaints.
+
 ## Not built yet
 
-The complaints desk with deadlines and escalation and restricted-mode windows (K4-C), admin views, wiring the review reminder and the public feed into the sample app, and compliance export/erasure for complainant data.
+Captcha provider wiring beyond `tsp.growth.Captcha`, a staff UI for windows (create them with `Windows` or SQL), SMS or push notices for staff, and per-organization complaint settings (the sample app uses one set for all).
