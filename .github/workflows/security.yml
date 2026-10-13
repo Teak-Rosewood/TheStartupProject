@@ -26,7 +26,7 @@ jobs:
         working-directory: python
     steps:
       - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: astral-sh/setup-uv@v7
       - name: audit locked dependencies for known vulnerabilities
         # PYSEC-2026-3740 (nltk 3.10.3, path checks in model-artifact loaders) has no fixed release.
         # nltk arrives only through crawl4ai, the optional browser extra used by the render worker,
