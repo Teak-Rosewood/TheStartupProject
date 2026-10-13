@@ -35,7 +35,7 @@ class StubProvider(BaseProvider):
 
     async def stream_chat_completion(
         self, api_key, messages, model_id, options=None
-    ) -> AsyncGenerator[dict[str, Any], None]:
+    ) -> AsyncGenerator[dict[str, Any]]:
         if self.error:
             raise self.error
         for part in ("po", "ng"):

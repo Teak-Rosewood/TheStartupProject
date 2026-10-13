@@ -7,7 +7,7 @@ name = "tsp-pipeline"
 version = "0.1.0"
 description = "Durable multi-step AI workflows on Postgres jobs: checkpoints, retries, budgets, traces, human steps and a versioned prompt registry."
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.13"
 license = { text = "MIT" }
 dependencies = ["sqlalchemy[asyncio]>=2", "fastapi>=0.110", "pydantic>=2", "tsp-db", "tsp-jobs", "tsp-flags", "tsp-ai"]
 

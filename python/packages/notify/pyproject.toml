@@ -7,7 +7,7 @@ name = "tsp-notify"
 version = "0.1.0"
 description = "Email (SES), push (FCM), SMS (SNS) and in-app notifications with suppression and consent."
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.13"
 license = { text = "MIT" }
 dependencies = [
   "sqlalchemy[asyncio]>=2",

@@ -10,7 +10,7 @@ import hashlib
 import hmac
 import json
 from collections.abc import Mapping
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import httpx
@@ -43,7 +43,7 @@ def _hmac(secret: str, message: bytes) -> str:
 
 
 def _ts(value: Any) -> datetime | None:
-    return datetime.fromtimestamp(int(value), tz=timezone.utc) if value else None
+    return datetime.fromtimestamp(int(value), tz=UTC) if value else None
 
 
 class RazorpayProvider:

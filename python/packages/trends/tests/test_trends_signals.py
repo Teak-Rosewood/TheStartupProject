@@ -1,5 +1,5 @@
 import json
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from tsp.trends import (
@@ -14,7 +14,7 @@ from tsp.trends import (
     scrape_rung,
 )
 
-NOW = datetime(2026, 3, 1, 12, 0, tzinfo=timezone.utc)
+NOW = datetime(2026, 3, 1, 12, 0, tzinfo=UTC)
 SINCE = NOW - timedelta(days=1)
 TOPICS = [
     Topic("t1", "air-fryer", "Air fryer", ("air fryer", "air fryers")),
@@ -114,7 +114,7 @@ async def test_gdelt_timeline_parsed(web):
 
     c = ctx(web)
     c.get_text = get_text
-    pts = await sig.collect(c, TOPICS[:1], datetime(2026, 2, 28, tzinfo=timezone.utc))
+    pts = await sig.collect(c, TOPICS[:1], datetime(2026, 2, 28, tzinfo=UTC))
     assert [(p.topic_id, p.value) for p in pts] == [("t1", 0.5)]
 
 

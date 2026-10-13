@@ -1,4 +1,4 @@
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from types import SimpleNamespace
 
@@ -23,7 +23,7 @@ from tsp.trends import (
 )
 
 DAY = date(2026, 3, 1)
-END = datetime(2026, 3, 2, tzinfo=timezone.utc)  # end of DAY
+END = datetime(2026, 3, 2, tzinfo=UTC)  # end of DAY
 ORG, OTHER = "org1", "org2"
 
 
@@ -184,7 +184,7 @@ def rss(*titles, at):
 
 
 async def test_collect_stores_points_and_replaces_the_overlap(db, web):
-    now = datetime(2026, 3, 1, 12, 30, tzinfo=timezone.utc)
+    now = datetime(2026, 3, 1, 12, 30, tzinfo=UTC)
     stamp = "Sun, 01 Mar 2026 12:10:00 +0000"
     web.pages["https://f.test/rss"] = (200, rss("air fryer tips", "air fryer deals", at=stamp))
     svc = make(db, web, {"feed_volume": FeedVolumeSignal(["https://f.test/rss"])})
@@ -208,7 +208,7 @@ async def test_failing_signal_is_skipped_in_collect_all(db, web):
     web.pages["https://f.test/rss"] = (200, rss("ramen", at="Sun, 01 Mar 2026 12:10:00 +0000"))
     svc = make(db, web, {"boom": Boom(), "feed_volume": FeedVolumeSignal(["https://f.test/rss"])})
     await seed_topics(svc, db)
-    done = await svc.collect_all(now=datetime(2026, 3, 1, 13, tzinfo=timezone.utc))
+    done = await svc.collect_all(now=datetime(2026, 3, 1, 13, tzinfo=UTC))
     assert done == {f"{ORG}/feed_volume": 1}
 
 
@@ -217,7 +217,7 @@ async def test_custom_feed_signal_reads_a_sources_stream(db, web):
         src = Source(key="blog", name="Blog", url="https://b.test", strategies=["scrape"])
         s.add(src)
         await s.flush()
-        at = datetime(2026, 3, 1, 9, 5, tzinfo=timezone.utc)
+        at = datetime(2026, 3, 1, 9, 5, tzinfo=UTC)
         for i, title in enumerate(["Ramen at home", "Best ramen shops", "Garden tips"]):
             s.add(
                 SourceItem(
@@ -231,10 +231,7 @@ async def test_custom_feed_signal_reads_a_sources_stream(db, web):
             )
     svc = make(db, web, {"source:blog": CustomFeedSignal("blog", "posts")})
     await seed_topics(svc, db)
-    assert (
-        await svc.collect(ORG, "source:blog", now=datetime(2026, 3, 1, 12, tzinfo=timezone.utc))
-        == 1
-    )
+    assert await svc.collect(ORG, "source:blog", now=datetime(2026, 3, 1, 12, tzinfo=UTC)) == 1
     async with db.session() as s:
         (row,) = (await s.execute(select(SignalRow))).scalars().all()
     assert row.value == 2 and row.signal == "source:blog"

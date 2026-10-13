@@ -195,7 +195,7 @@ def build_router(gw: AiGateway) -> APIRouter:
                 )
 
             stream = cast(
-                "AsyncGenerator[ChatCompletionChunk, None]",
+                "AsyncGenerator[ChatCompletionChunk]",
                 gw.client.chat.create(
                     model=body.model, messages=body.messages, stream=True, **params
                 ),
@@ -205,7 +205,7 @@ def build_router(gw: AiGateway) -> APIRouter:
             )  # surface routing errors as a real status code before streaming starts
         except StopAsyncIteration:
             first = None
-            stream = cast("AsyncGenerator[ChatCompletionChunk, None]", _empty())
+            stream = cast("AsyncGenerator[ChatCompletionChunk]", _empty())
         except ProviderHttpError as e:
             await settle(
                 request,
@@ -320,7 +320,7 @@ async def _empty() -> AsyncIterator[ChatCompletionChunk]:
 
 
 async def _chain(
-    first: ChatCompletionChunk | None, rest: AsyncGenerator[ChatCompletionChunk, None]
+    first: ChatCompletionChunk | None, rest: AsyncGenerator[ChatCompletionChunk]
 ) -> AsyncIterator[ChatCompletionChunk]:
     if first is not None:
         yield first

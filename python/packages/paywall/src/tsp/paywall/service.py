@@ -4,7 +4,7 @@ import hashlib
 import secrets
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field, replace
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Literal
 
 from sqlalchemy import ColumnElement, delete, func, or_, select, update
@@ -63,7 +63,7 @@ def hash_token(token: str) -> str:
 
 
 def _now() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 @dataclass

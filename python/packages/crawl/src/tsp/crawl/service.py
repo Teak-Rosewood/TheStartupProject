@@ -3,7 +3,7 @@ from __future__ import annotations
 import fnmatch
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from urllib.parse import urlsplit
 
@@ -232,9 +232,7 @@ class CrawlService:
         src = await self.source(session, org_id, source_id)
         if src.status != "active":
             raise BadRequest("resume the source before recrawling")
-        await self._enqueue_plan(
-            session, source_id, f"manual-{_slot(datetime.now(timezone.utc), 60)}"
-        )
+        await self._enqueue_plan(session, source_id, f"manual-{_slot(datetime.now(UTC), 60)}")
 
     async def delete_source(
         self,
@@ -268,7 +266,7 @@ class CrawlService:
 
     async def refresh_due(self) -> int:
         """Queue a plan for each active source whose refresh interval has passed."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         n = 0
         async with self._session() as s:
             rows = (
@@ -308,7 +306,7 @@ class CrawlService:
 
     async def plan(self, source_id: str) -> int:
         """Expand a source into pages and queue a fetch for each. Safe to run twice."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         async with self._session() as s:
             src = await s.get(CrawlSource, source_id)
             if src is None or src.status != "active":
@@ -381,7 +379,7 @@ class CrawlService:
             await enqueue(s, FETCH_JOB, {"page_id": page_id}, unique_key=key)
 
     async def _pages_this_month(self, s: AsyncSession, org_id: str) -> int:
-        month = datetime.now(timezone.utc).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        month = datetime.now(UTC).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         return int(
             (
                 await s.execute(
@@ -478,7 +476,7 @@ class CrawlService:
         if page is None:
             return None  # the source was purged while we were fetching
         kind, data = outcome
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         if kind == "defer":
             await enqueue(
                 s,
@@ -671,7 +669,7 @@ class CrawlService:
                         url=prepared.url, final_url=result.final_url, status=result.status or 200,
                         title=result.title, markdown=result.markdown, links=result.links,
                         content_hash=content_hash(result.markdown), etag=None, last_modified=None,
-                        fetched_at=datetime.now(timezone.utc), content_type="text/html",
+                        fetched_at=datetime.now(UTC), content_type="text/html",
                         fetcher="browser",
                     ),
                 )  # fmt: skip

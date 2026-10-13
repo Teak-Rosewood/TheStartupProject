@@ -6,7 +6,7 @@ import mimetypes
 import re
 from collections.abc import Mapping
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 
@@ -160,7 +160,7 @@ class SourceRunner:
         return source_info(row), get_connector(key)()
 
     async def _context(self, src: SourceInfo) -> ConnectorContext:
-        month = datetime.now(timezone.utc).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        month = datetime.now(UTC).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         async with self.db.session() as s:
             spent = (
                 await s.execute(
@@ -206,7 +206,7 @@ class SourceRunner:
         only: str | None,
         dry_run: bool,
     ) -> StreamResult:
-        started = datetime.now(timezone.utc)
+        started = datetime.now(UTC)
         ctx = await self._context(src)
         impls = connector.strategies()
         state = _State(since if since is not None else await self._cursor(src.id, stream))
@@ -289,7 +289,7 @@ class SourceRunner:
         state: _State,
         dry_run: bool,
     ) -> None:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         cursor, new, updated = state.cursor, 0, 0
         lines: list[dict[str, Any]] = []
         async with self.db.session() as s:
@@ -362,7 +362,7 @@ class SourceRunner:
     async def _finish(
         self, src: SourceInfo, stream: str, started: datetime, state: _State, out: StreamResult
     ) -> int:
-        finished = datetime.now(timezone.utc)
+        finished = datetime.now(UTC)
         manifest_uri = None
         if state.manifest:
             body = "\n".join(json.dumps(m, default=str) for m in state.manifest).encode()

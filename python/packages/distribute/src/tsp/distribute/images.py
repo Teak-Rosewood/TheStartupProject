@@ -8,7 +8,7 @@ import hashlib
 import json
 import uuid
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from html import escape
 from html.parser import HTMLParser
 from typing import Any, Protocol
@@ -111,7 +111,7 @@ async def generate_image(
         prompt_sha256=hashlib.sha256(prompt.encode()).hexdigest(),
         style=style,
         size=size,
-        created_at=datetime.now(timezone.utc).isoformat(),
+        created_at=datetime.now(UTC).isoformat(),
         mime=img.mime,
         key=key,
         c2pa=img.c2pa,

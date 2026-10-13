@@ -95,7 +95,7 @@ class GoogleProvider(BaseProvider):
         messages: list[dict[str, Any]],
         model_id: str,
         options: dict[str, Any] | None = None,
-    ) -> AsyncGenerator[dict[str, Any], None]:
+    ) -> AsyncGenerator[dict[str, Any]]:
         options = options or {}
         payload = self._build_payload(messages, model_id, options)
         payload["generationConfig"]["stream"] = True

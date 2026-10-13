@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from .errors import FetchError, RenderUnavailable
 from .page import NotModified, Page, content_hash
@@ -85,7 +85,7 @@ class BrowserFetcher:
             content_hash=content_hash(r.markdown),
             etag=None,
             last_modified=None,
-            fetched_at=datetime.now(timezone.utc),
+            fetched_at=datetime.now(UTC),
             content_type="text/html",
             fetcher=self.name,
         )

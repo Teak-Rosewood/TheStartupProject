@@ -11,7 +11,7 @@ import hmac
 import json
 import time
 from collections.abc import Mapping
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import httpx
@@ -233,7 +233,7 @@ class StripeProvider:
                 obj.get("customer_email"),
             )
             end = (line.get("period") or {}).get("end")
-            ev.period_end = datetime.fromtimestamp(end, tz=timezone.utc) if end else None
+            ev.period_end = datetime.fromtimestamp(end, tz=UTC) if end else None
             ev.notes = {**dict(line.get("metadata") or {}), **ev.notes}
             ev.status = "active"
         elif name == "invoice.payment_failed":
@@ -262,7 +262,7 @@ class StripeProvider:
             }.get(status, "subscription.updated")
             ev.subscription_id, ev.status = obj.get("id"), status
             end = obj.get("current_period_end")
-            ev.period_end = datetime.fromtimestamp(end, tz=timezone.utc) if end else None
+            ev.period_end = datetime.fromtimestamp(end, tz=UTC) if end else None
         elif name == "charge.refunded":
             ev.type, ev.payment_id, ev.amount = (
                 "refund.processed",

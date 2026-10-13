@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from .service import TrendsService
@@ -16,7 +16,7 @@ def register_jobs(registry: Any, service: TrendsService) -> None:
 
     @registry.job("trends.scan")
     async def scan(ctx: Any, payload: dict[str, Any]) -> None:
-        day = (datetime.now(timezone.utc) - timedelta(days=1)).date()
+        day = (datetime.now(UTC) - timedelta(days=1)).date()
         await service.scan_all(day)
 
     @registry.job("trends.prune")

@@ -1,5 +1,5 @@
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 URL = os.environ.get("TSP_TEST_DATABASE_URL", "postgresql://postgres:test@127.0.0.1:55432/test")
 TABLES = (
@@ -12,7 +12,7 @@ ORG = "pub1"
 
 
 class Clock:
-    def __init__(self, at=datetime(2026, 3, 4, 9, 0, tzinfo=timezone.utc)):  # a Wednesday
+    def __init__(self, at=datetime(2026, 3, 4, 9, 0, tzinfo=UTC)):  # a Wednesday
         self.at = at
 
     def __call__(self):

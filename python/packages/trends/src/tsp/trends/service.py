@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Awaitable, Callable, Mapping, Sequence
 from dataclasses import dataclass, field
-from datetime import date, datetime, time, timedelta, timezone
+from datetime import UTC, date, datetime, time, timedelta
 from decimal import Decimal
 from typing import Any
 
@@ -120,7 +120,7 @@ class TrendsService:
 
     async def collect(self, org_id: str, signal: str, *, now: datetime | None = None) -> int:
         """Run one signal for one organization and store its points. Returns the number stored."""
-        now = now or datetime.now(timezone.utc)
+        now = now or datetime.now(UTC)
         impl = self.signals[signal]
         async with self.db.session() as s:
             topics = self._as_topics(await self._topics(s, org_id))
@@ -183,7 +183,7 @@ class TrendsService:
 
         Re-running replaces the scores of candidates still ``new`` and leaves picked and dismissed
         ones alone."""
-        day_end = datetime.combine(day + timedelta(days=1), time.min, tzinfo=timezone.utc)
+        day_end = datetime.combine(day + timedelta(days=1), time.min, tzinfo=UTC)
         since = day_end - timedelta(days=BASELINE_DAYS + 1)
         async with self.db.session() as s:
             topics = {t.id: t for t in await self._topics(s, org_id)}
@@ -277,7 +277,7 @@ class TrendsService:
         return out
 
     async def prune(self, *, now: datetime | None = None) -> None:
-        cutoff = (now or datetime.now(timezone.utc)) - timedelta(days=self.config.keep_days)
+        cutoff = (now or datetime.now(UTC)) - timedelta(days=self.config.keep_days)
         async with self.db.session() as s:
             await s.execute(delete(SignalRow).where(SignalRow.at < cutoff))
 

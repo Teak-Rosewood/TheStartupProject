@@ -171,7 +171,7 @@ class OpenAICompatProvider(BaseProvider):
         messages: list[dict[str, Any]],
         model_id: str,
         options: dict[str, Any] | None = None,
-    ) -> AsyncGenerator[dict[str, Any], None]:
+    ) -> AsyncGenerator[dict[str, Any]]:
         """Streaming chat completion."""
         client = await self._get_client()
         url = f"{self._base_url}/chat/completions"

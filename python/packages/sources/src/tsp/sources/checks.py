@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import UTC
 
 from sqlalchemy import select
 from tsp.audit import Actor
@@ -89,9 +90,9 @@ class SourceChecks:
             if robots_ok is not None:
                 row.robots_ok = robots_ok
             if terms_hash:
-                from datetime import datetime, timezone
+                from datetime import datetime
 
-                row.terms_checked_at = datetime.now(timezone.utc)
+                row.terms_checked_at = datetime.now(UTC)
             disabled = bool(reasons) and row.enabled
             if disabled:
                 row.enabled = False

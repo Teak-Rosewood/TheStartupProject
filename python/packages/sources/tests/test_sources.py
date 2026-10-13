@@ -1,5 +1,5 @@
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 
 import pytest
@@ -35,7 +35,7 @@ async def add_source(db, key="demo", **kw):
 
 
 def day(n):
-    return datetime(2026, 1, n, tzinfo=timezone.utc)
+    return datetime(2026, 1, n, tzinfo=UTC)
 
 
 class Scripted:

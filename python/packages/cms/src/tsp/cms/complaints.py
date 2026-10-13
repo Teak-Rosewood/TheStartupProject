@@ -11,7 +11,7 @@ import statistics
 import uuid
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any, Protocol
 
 from sqlalchemy import select
@@ -71,7 +71,7 @@ StaffNotice = Callable[[AsyncSession, Complaint, str], Awaitable[None]]
 
 
 def _utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class ComplaintsDesk:
@@ -387,7 +387,7 @@ class ComplaintsDesk:
 
     async def _month(self, org_id: str, month: str) -> list[Complaint]:
         try:
-            start = datetime.strptime(month, "%Y-%m").replace(tzinfo=timezone.utc)
+            start = datetime.strptime(month, "%Y-%m").replace(tzinfo=UTC)
         except ValueError as e:
             raise CmsError("month must look like 2026-03") from e
         end = (start + timedelta(days=32)).replace(day=1)

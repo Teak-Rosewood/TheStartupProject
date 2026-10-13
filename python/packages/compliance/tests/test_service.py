@@ -1,5 +1,5 @@
 import json
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 
 import pytest
@@ -126,7 +126,7 @@ async def test_expired_export_has_no_link(db, tmp_path):
     c = make(tmp_path)
     async with db.session() as s:
         result = await c.request_export(s, SUB)
-        result.request.completed_at = datetime.now(timezone.utc) - timedelta(days=8)
+        result.request.completed_at = datetime.now(UTC) - timedelta(days=8)
         assert await c.export_url(result.request) is None
 
 
@@ -144,7 +144,7 @@ async def test_deletion_grace_cancel_and_execution(db, tmp_path):
         r1 = await c.request_delete(s, SUB, request=req())
         r2 = await c.request_delete(s, SUB)  # idempotent
         assert r1.id == r2.id and ("sign_out", SUB) in ident.calls
-        assert r1.scheduled_for - r1.requested_at.replace(tzinfo=timezone.utc) > timedelta(days=29)
+        assert r1.scheduled_for - r1.requested_at.replace(tzinfo=UTC) > timedelta(days=29)
     async with db.session() as s:
         assert await c.cancel_delete(s, SUB) is True
         assert await c.pending_deletion(s, SUB) is None
@@ -154,7 +154,7 @@ async def test_deletion_grace_cancel_and_execution(db, tmp_path):
         await c.request_delete(s, SUB)
     async with db.session() as s:
         assert await c.run_due_deletions(s) == 0  # still in grace
-        later = datetime.now(timezone.utc) + timedelta(days=31)
+        later = datetime.now(UTC) + timedelta(days=31)
         assert await c.run_due_deletions(s, now=later) == 1
     assert erased == [SUB] and ("delete", SUB) in ident.calls
     async with db.session() as s:

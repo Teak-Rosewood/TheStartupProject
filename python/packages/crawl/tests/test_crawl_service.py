@@ -1,3 +1,5 @@
+from datetime import UTC
+
 import pytest
 from crawl_support import drain
 from sqlalchemy import select, text
@@ -299,11 +301,9 @@ async def test_refresh_queues_only_due_sources(db, make_service, site):
     await drain(db, registry)
     assert await svc.refresh_due() == 0  # just crawled
     async with db.session() as s:
-        from datetime import datetime, timedelta, timezone
+        from datetime import datetime, timedelta
 
-        (await s.get(CrawlSource, sid)).last_run_at = datetime.now(timezone.utc) - timedelta(
-            hours=25
-        )
+        (await s.get(CrawlSource, sid)).last_run_at = datetime.now(UTC) - timedelta(hours=25)
     assert await svc.refresh_due() == 1
 
 

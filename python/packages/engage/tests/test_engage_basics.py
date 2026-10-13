@@ -1,6 +1,6 @@
 """K6-A: receipts, polls, streaks, points, badges and onboarding (frozen clock)."""
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from engage_support import ORG
@@ -203,7 +203,7 @@ async def test_poll_history_is_private_to_the_reader(session, clock):
 # -- streaks (frozen clock, week edges, time zone) ------------------------------------------------------
 
 
-def at(y, m, d, h=12, mi=0, tz=timezone.utc):
+def at(y, m, d, h=12, mi=0, tz=UTC):
     return datetime(y, m, d, h, mi, tzinfo=tz)
 
 

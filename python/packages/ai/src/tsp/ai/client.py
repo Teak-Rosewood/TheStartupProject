@@ -188,7 +188,7 @@ class ChatNamespace:
         abort_signal: asyncio.Event | None = None,
         capability: str = "chat",
         **kwargs,
-    ) -> Coroutine[Any, Any, ChatCompletionResponse] | AsyncGenerator[ChatCompletionChunk, None]:
+    ) -> Coroutine[Any, Any, ChatCompletionResponse] | AsyncGenerator[ChatCompletionChunk]:
         """
         Create a chat completion.
 
@@ -344,7 +344,7 @@ class ChatNamespace:
         options: dict[str, Any],
         abort_signal: asyncio.Event | None = None,
         capability: str = "chat",
-    ) -> AsyncGenerator[ChatCompletionChunk, None]:
+    ) -> AsyncGenerator[ChatCompletionChunk]:
         """Streaming chat completion."""
         chunk_id = f"chatcmpl-{int(time.time())}"
 

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from sqlalchemy import delete
@@ -15,7 +15,7 @@ async def purge_rejected(
     session: AsyncSession, *, keep_days: int = 90, now: datetime | None = None
 ) -> int:
     """Delete rejected takes older than ``keep_days`` (the retention schedule). Appealed takes are kept."""
-    cutoff = (now or datetime.now(timezone.utc)) - timedelta(days=keep_days)
+    cutoff = (now or datetime.now(UTC)) - timedelta(days=keep_days)
     res = await session.execute(
         delete(Submission).where(Submission.status == "rejected", Submission.decided_at < cutoff)
     )

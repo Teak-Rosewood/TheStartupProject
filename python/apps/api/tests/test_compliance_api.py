@@ -1,5 +1,6 @@
 import asyncio
 import os
+from datetime import UTC
 from pathlib import Path
 
 import pytest
@@ -142,13 +143,11 @@ def test_deleting_an_account_blocks_it_then_erases_after_grace(ctx):
     ctx.post("/api/me/delete")
 
     async def purge():
-        from datetime import datetime, timedelta, timezone
+        from datetime import datetime, timedelta
 
         db = Database(DB)
         async with db.session() as s:
-            n = await ctx.c.run_due_deletions(
-                s, now=datetime.now(timezone.utc) + timedelta(days=31)
-            )
+            n = await ctx.c.run_due_deletions(s, now=datetime.now(UTC) + timedelta(days=31))
             left = (await s.execute(text("select count(*) from notes"))).scalar_one()
         await db.dispose()
         return n, left

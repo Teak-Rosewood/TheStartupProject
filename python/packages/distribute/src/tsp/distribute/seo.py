@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from urllib.parse import urlparse
 from xml.sax.saxutils import escape, quoteattr
@@ -12,7 +12,7 @@ from .items import Item
 
 
 def _iso(d: datetime) -> str:
-    return (d if d.tzinfo else d.replace(tzinfo=timezone.utc)).isoformat()
+    return (d if d.tzinfo else d.replace(tzinfo=UTC)).isoformat()
 
 
 def jsonld_article(
@@ -95,13 +95,11 @@ def news_sitemap(
     max_age: timedelta = timedelta(days=2),
 ) -> str:
     """Google News sitemap: only items published in the last two days, one entry per language."""
-    now = now or datetime.now(timezone.utc)
+    now = now or datetime.now(UTC)
     rows = []
     for item in sorted(items, key=lambda i: i.published_at, reverse=True):
         pub = (
-            item.published_at
-            if item.published_at.tzinfo
-            else item.published_at.replace(tzinfo=timezone.utc)
+            item.published_at if item.published_at.tzinfo else item.published_at.replace(tzinfo=UTC)
         )
         if now - pub > max_age or pub > now:
             continue

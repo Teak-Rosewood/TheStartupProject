@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import select, update
 from sqlalchemy.dialects.postgresql import insert
@@ -39,7 +39,7 @@ async def mark_read(session: AsyncSession, user_sub: str, ids: list[int] | None 
     if ids is not None:
         stmt = stmt.where(Notification.id.in_(ids))
     result = await session.execute(
-        stmt.values(read_at=datetime.now(timezone.utc)).returning(Notification.id)
+        stmt.values(read_at=datetime.now(UTC)).returning(Notification.id)
     )
     return len(result.all())
 

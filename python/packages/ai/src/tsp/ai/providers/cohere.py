@@ -131,7 +131,7 @@ class CohereProvider(BaseProvider):
         messages: list[dict[str, Any]],
         model_id: str,
         options: dict[str, Any] | None = None,
-    ) -> AsyncGenerator[dict[str, Any], None]:
+    ) -> AsyncGenerator[dict[str, Any]]:
         # Cohere streaming not fully implemented
         raise NotImplementedError("Cohere streaming not yet supported")
 

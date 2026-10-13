@@ -1,5 +1,5 @@
 import asyncio
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from payments_support import PLANS, captured, make_gstin, signed
@@ -157,7 +157,7 @@ async def test_unattributable_event_fails_so_the_gateway_retries(db, pay):
 async def test_subscription_lifecycle_drives_entitlements(db, pay):
     co = await checkout(pay, db, "pro_monthly")
     sub_id = co.payload["subscription_id"]
-    end = int((datetime.now(timezone.utc) + timedelta(days=30)).timestamp())
+    end = int((datetime.now(UTC) + timedelta(days=30)).timestamp())
 
     def sub_event(name, status, end_ts=end):
         return {
@@ -184,7 +184,7 @@ async def test_subscription_lifecycle_drives_entitlements(db, pay):
             10,
             "active",
         )
-    past = int((datetime.now(timezone.utc) - timedelta(days=1)).timestamp())
+    past = int((datetime.now(UTC) - timedelta(days=1)).timestamp())
     await deliver(pay, db, sub_event("subscription.pending", "pending", past), "e2")
     async with db.session() as s:
         assert (
@@ -196,7 +196,7 @@ async def test_subscription_lifecycle_drives_entitlements(db, pay):
         sub_event(
             "subscription.pending",
             "pending",
-            int((datetime.now(timezone.utc) - timedelta(days=5)).timestamp()),
+            int((datetime.now(UTC) - timedelta(days=5)).timestamp()),
         ),
         "e3",
     )
@@ -233,7 +233,7 @@ async def test_renewal_charge_updates_period_records_one_payment_and_grants_plan
     async with db.session() as s:
         co = await pay.start_checkout(s, ORG, "pro_monthly", user_sub=USER, email="b@example.com")
     sub_id = co.payload["subscription_id"]
-    end = int((datetime.now(timezone.utc) + timedelta(days=30)).timestamp())
+    end = int((datetime.now(UTC) + timedelta(days=30)).timestamp())
     charged = {
         "event": "subscription.charged",
         "payload": {

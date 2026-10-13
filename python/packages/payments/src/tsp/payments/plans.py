@@ -13,13 +13,8 @@ features = { seats = 10, exports = true }
 
 from __future__ import annotations
 
-import sys
+import tomllib
 from pathlib import Path
-
-if sys.version_info >= (3, 11):
-    import tomllib
-else:  # pragma: no cover
-    import tomli as tomllib
 
 from .service import PlanSpec
 

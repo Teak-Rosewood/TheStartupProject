@@ -8,7 +8,7 @@ import hmac
 import re
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import httpx
@@ -140,7 +140,7 @@ class Leads:
         if lead is None or lead.email != parsed[1]:
             return None
         if lead.confirmed_at is None:
-            lead.confirmed_at, lead.unsubscribed_at = datetime.now(timezone.utc), None
+            lead.confirmed_at, lead.unsubscribed_at = datetime.now(UTC), None
             if self.on_confirmed:
                 await self.on_confirmed(session, lead)
         return lead

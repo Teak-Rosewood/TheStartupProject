@@ -98,7 +98,7 @@ def create_app(client: LLMClient, api_key: str | None = None) -> FastAPI:
             return result.model_dump(exclude_none=True)
 
         stream = cast(
-            AsyncGenerator[ChatCompletionChunk, None],
+            AsyncGenerator[ChatCompletionChunk],
             client.chat.create(model=body.model, messages=body.messages, stream=True, **params),
         )
         # Pull the first chunk before committing to 200 so routing errors get a real status.
@@ -116,7 +116,7 @@ def _frame(payload: dict[str, Any]) -> str:
 
 
 async def _sse(
-    first: ChatCompletionChunk | None, rest: AsyncGenerator[ChatCompletionChunk, None]
+    first: ChatCompletionChunk | None, rest: AsyncGenerator[ChatCompletionChunk]
 ) -> AsyncIterator[str]:
     try:
         if first is not None:

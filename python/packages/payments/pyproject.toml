@@ -7,7 +7,7 @@ name = "tsp-payments"
 version = "0.1.0"
 description = "Provider-agnostic payments (Razorpay first, Stripe second), GST invoices, credits ledger."
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.13"
 license = { text = "MIT" }
 dependencies = [
   "sqlalchemy[asyncio]>=2",
@@ -15,7 +15,6 @@ dependencies = [
   "httpx>=0.24",
   "reportlab>=4",
   "aioboto3>=13",
-  "tomli>=2; python_version < '3.11'",
   "tsp-db",
   "tsp-audit",
 ]

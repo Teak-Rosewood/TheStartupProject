@@ -2,7 +2,7 @@
 and export and erasure of complainant data."""
 
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import httpx
 import pytest
@@ -276,7 +276,7 @@ async def test_monthly_report_and_csv(desk, clock):
 
 
 def at(day, hour=0):
-    return datetime(2026, 3, day, hour, tzinfo=timezone.utc)
+    return datetime(2026, 3, day, hour, tzinfo=UTC)
 
 
 async def test_a_window_blocks_a_type_only_during_its_dates_and_region(session, clock):

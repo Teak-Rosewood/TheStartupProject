@@ -7,7 +7,7 @@ name = "tsp-distribute"
 version = "0.1.0"
 description = "Newsletters, share cards, structured data, sitemaps and labelled AI illustrations for published content."
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.13"
 license = { text = "MIT" }
 dependencies = ["pillow>=10", "jinja2>=3", "httpx>=0.24", "fastapi>=0.110", "tsp-i18n", "tsp-notify", "tsp-storage"]
 

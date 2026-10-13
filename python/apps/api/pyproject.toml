@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 name = "tsp-api-app"
 version = "0.1.0"
 description = "Sample API service built on the tsp.* runtime modules"
-requires-python = ">=3.10"
+requires-python = ">=3.13"
 dependencies = ["tsp-server", "tsp-db", "tsp-cache", "tsp-nosql", "tsp-auth", "tsp-audit", "tsp-compliance", "tsp-accounts", "tsp-admin", "tsp-payments", "tsp-jobs", "tsp-notify", "tsp-growth", "tsp-flags", "tsp-storage", "tsp-metering", "tsp-ai", "tsp-crawl", "boto3>=1.34"]
 
 [project.scripts]

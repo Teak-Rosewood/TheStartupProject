@@ -1,5 +1,5 @@
 import asyncio
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from sqlalchemy import select, text
@@ -86,7 +86,7 @@ async def test_unique_key_dedupes(db):
 async def test_future_jobs_wait(db):
     reg, w, calls = make(db)
     async with db.session() as s:
-        await enqueue(s, "ok", run_at=datetime.now(timezone.utc) + timedelta(hours=1))
+        await enqueue(s, "ok", run_at=datetime.now(UTC) + timedelta(hours=1))
     assert await w.run_once() == 0 and calls == []
 
 
@@ -97,7 +97,7 @@ async def test_failures_retry_with_backoff_then_succeed(db):
     await w.run_once()
     (job,) = await rows(db)
     assert job.status == "queued" and job.attempts == 1 and "temporary" in job.last_error
-    assert job.run_at > datetime.now(timezone.utc) + timedelta(seconds=5)  # backed off
+    assert job.run_at > datetime.now(UTC) + timedelta(seconds=5)  # backed off
     async with db.session() as s:  # fast-forward the backoff
         await s.execute(text("UPDATE jobs SET run_at = now()"))
     await w.run_once()
@@ -179,13 +179,11 @@ def test_schedule_parsing():
     for bad in ("every 0m", "hourly", "daily 25:00", "every 5x", ""):
         with pytest.raises(ValueError):
             parse_schedule(bad)
-    t = datetime(2026, 10, 12, 10, 0, tzinfo=timezone.utc)
+    t = datetime(2026, 10, 12, 10, 0, tzinfo=UTC)
     assert next_run("every 15m", t) == t + timedelta(minutes=15)
-    assert next_run("daily 02:30", t) == datetime(2026, 10, 13, 2, 30, tzinfo=timezone.utc)
-    assert next_run("daily 12:00", t) == datetime(2026, 10, 12, 12, 0, tzinfo=timezone.utc)
-    assert next_run("daily 10:00", t) == datetime(
-        2026, 10, 13, 10, 0, tzinfo=timezone.utc
-    )  # strictly after
+    assert next_run("daily 02:30", t) == datetime(2026, 10, 13, 2, 30, tzinfo=UTC)
+    assert next_run("daily 12:00", t) == datetime(2026, 10, 12, 12, 0, tzinfo=UTC)
+    assert next_run("daily 10:00", t) == datetime(2026, 10, 13, 10, 0, tzinfo=UTC)  # strictly after
 
 
 async def test_cron_enqueues_once_even_if_workers_race(db):
@@ -207,10 +205,7 @@ async def test_cron_enqueues_once_even_if_workers_race(db):
     assert runs == [{"a": 1}]
     async with db.session() as s:
         c = (await s.execute(select(CronJob))).scalar_one()
-    assert (
-        c.next_run_at > datetime.now(timezone.utc) + timedelta(minutes=50)
-        and c.last_run_at is not None
-    )
+    assert c.next_run_at > datetime.now(UTC) + timedelta(minutes=50) and c.last_run_at is not None
     assert await w1.enqueue_due_cron() == 0  # not due again until the next hour
 
 

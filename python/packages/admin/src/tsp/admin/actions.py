@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import hmac
 import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from sqladmin import BaseView, expose
@@ -218,7 +218,7 @@ def make_finance_view(engine: AsyncEngine) -> type[BaseView]:
             staff = request.session.get("staff") or {}
             if staff.get("role") not in ("finance", "superadmin"):
                 return Response("forbidden", status_code=403)
-            fy = request.query_params.get("fy") or financial_year(datetime.now(timezone.utc))[0]
+            fy = request.query_params.get("fy") or financial_year(datetime.now(UTC))[0]
             if not _FY.match(fy):
                 return Response("fy must look like 2026-27", status_code=400)
             async with sessions() as s:

@@ -116,7 +116,7 @@ async def _probe(provider: BaseProvider, api_key: str, model_id: str) -> ModelRe
                 provider.chat_completion(api_key, PROBE_PROMPT, model_id, dict(PROBE_OPTIONS)),
                 PROBE_TIMEOUT_S,
             )
-        except asyncio.TimeoutError:
+        except TimeoutError:
             return ModelResult(id=model_id, status=Status.TIMEOUT, error="probe timed out")
         except ProviderHttpError as e:
             status = classify(e)
@@ -155,7 +155,7 @@ async def _probe_embedding(provider: BaseProvider, api_key: str, model_id: str) 
         response = await asyncio.wait_for(
             provider.embedding(api_key, [EMBED_PROBE_TEXT], model_id, {}), PROBE_TIMEOUT_S
         )
-    except asyncio.TimeoutError:
+    except TimeoutError:
         return ModelResult(id=model_id, status=Status.TIMEOUT, error="probe timed out")
     except ProviderHttpError as e:
         return ModelResult(id=model_id, status=classify(e), error=str(e)[:300])
@@ -189,7 +189,7 @@ async def verify_provider(
         entries = await asyncio.wait_for(provider.list_models(api_key), PROBE_TIMEOUT_S)
     except NotImplementedError:
         entries = [{"id": m} for m in spec.fallback_models]
-    except asyncio.TimeoutError:
+    except TimeoutError:
         return ProviderResult(
             platform=spec.platform, key_status=Status.TIMEOUT, error="list_models timed out"
         )

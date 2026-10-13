@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Callable
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import or_, select
@@ -21,7 +21,7 @@ FLAG_PREFIX = "cms.window."
 
 
 def _utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def flag_key(name: str) -> str:

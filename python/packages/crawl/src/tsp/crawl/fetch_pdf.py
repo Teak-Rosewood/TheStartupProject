@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Callable
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from io import BytesIO
 
 from .errors import FetchError, RenderUnavailable, UnsupportedContentType
@@ -75,7 +75,7 @@ class PdfFetcher:
             content_hash=content_hash(markdown),
             etag=raw.etag,
             last_modified=raw.last_modified,
-            fetched_at=datetime.now(timezone.utc),
+            fetched_at=datetime.now(UTC),
             content_type="application/pdf",
             fetcher=self.name,
         )

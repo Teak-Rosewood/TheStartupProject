@@ -1,5 +1,5 @@
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
@@ -20,7 +20,7 @@ ORG, OTHER = "org-1", "org-2"
 class Clock:
     """A settable clock for deadlines and schedules."""
 
-    def __init__(self, at=datetime(2026, 3, 1, 9, 0, tzinfo=timezone.utc)):
+    def __init__(self, at=datetime(2026, 3, 1, 9, 0, tzinfo=UTC)):
         self.at = at
 
     def __call__(self):

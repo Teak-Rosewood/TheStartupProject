@@ -110,7 +110,7 @@ class BedrockProvider(BaseProvider):
 
     def stream_chat_completion(
         self, api_key, messages, model_id, options=None
-    ) -> AsyncGenerator[dict[str, Any], None]:
+    ) -> AsyncGenerator[dict[str, Any]]:
         raise NotImplementedError("bedrock provider supports embeddings only")
 
     async def validate_key(self, api_key: str) -> bool | dict[str, Any]:

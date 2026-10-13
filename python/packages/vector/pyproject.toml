@@ -7,7 +7,7 @@ name = "tsp-vector"
 version = "0.1.0"
 description = "Vector and hybrid search with RAG building blocks: pgvector store, chunking, ingestion jobs, per-organization isolation."
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.13"
 license = { text = "MIT" }
 dependencies = [
   "tsp-ai",

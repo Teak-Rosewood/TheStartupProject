@@ -1,9 +1,9 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from tsp.trends import Point, Scored, combine, daily_value, dedupe, series_z, zscore
 
-END = datetime(2026, 3, 1, tzinfo=timezone.utc)
+END = datetime(2026, 3, 1, tzinfo=UTC)
 
 
 def history(values, end=END):

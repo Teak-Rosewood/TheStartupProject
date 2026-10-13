@@ -8,7 +8,7 @@ import xml.etree.ElementTree as ET
 from collections import Counter
 from collections.abc import Awaitable, Callable, Mapping, Sequence
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from email.utils import parsedate_to_datetime
 from typing import Any, Protocol
 from urllib.parse import quote
@@ -100,7 +100,7 @@ def _when(text: str | None) -> datetime | None:
             d = datetime.fromisoformat(text.strip().replace("Z", "+00:00"))
         except ValueError:
             return None
-    return d if d.tzinfo else d.replace(tzinfo=timezone.utc)
+    return d if d.tzinfo else d.replace(tzinfo=UTC)
 
 
 def parse_feed(xml: str | bytes) -> list[FeedItem]:
@@ -130,7 +130,7 @@ def parse_feed(xml: str | bytes) -> list[FeedItem]:
 
 
 def _hour(at: datetime) -> datetime:
-    return at.astimezone(timezone.utc).replace(minute=0, second=0, microsecond=0)
+    return at.astimezone(UTC).replace(minute=0, second=0, microsecond=0)
 
 
 def count_by_hour(
@@ -240,7 +240,7 @@ def parse_gdelt_timeline(doc: Any, topic_id: str) -> list[SignalPoint]:
     for series in doc.get("timeline", []):
         for row in series.get("data", []):
             try:
-                at = datetime.strptime(row["date"], "%Y%m%dT%H%M%SZ").replace(tzinfo=timezone.utc)
+                at = datetime.strptime(row["date"], "%Y%m%dT%H%M%SZ").replace(tzinfo=UTC)
                 points.append(SignalPoint(at=at, value=float(row["value"]), topic_id=topic_id))
             except (KeyError, ValueError, TypeError):
                 continue
@@ -256,7 +256,7 @@ class GdeltVolumeSignal:
     async def collect(
         self, ctx: TrendsContext, topics: Sequence[Topic], since: datetime
     ) -> list[SignalPoint]:
-        days = max(1, min(30, (datetime.now(timezone.utc) - since).days + 1))
+        days = max(1, min(30, (datetime.now(UTC) - since).days + 1))
         points: list[SignalPoint] = []
         for t in topics:
             if not t.keywords:

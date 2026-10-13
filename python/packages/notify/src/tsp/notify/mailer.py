@@ -5,7 +5,7 @@ import hashlib
 import hmac
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any, Protocol
 
 import aioboto3
@@ -93,7 +93,7 @@ class SesTransport:
 
 
 def _now() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class Notifier:

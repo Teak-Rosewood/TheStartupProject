@@ -8,7 +8,7 @@ import random
 import socket
 from collections.abc import AsyncIterator, Callable, Sequence
 from contextlib import asynccontextmanager
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from sqlalchemy import select, text
@@ -68,7 +68,7 @@ async def fail_job(db: Database, job: dict[str, Any], error: str, *, dead: bool 
             {
                 "st": "dead" if dead else "queued",
                 "err": error[:1000],
-                "at": datetime.now(timezone.utc) + backoff(job["attempts"]),
+                "at": datetime.now(UTC) + backoff(job["attempts"]),
                 "id": job["id"],
             },
         )
@@ -102,7 +102,7 @@ class Worker:
         self._sessions = async_sessionmaker(database.engine, expire_on_commit=False)
 
     async def sync_schedules(self) -> None:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         async with self.db.session() as s:
             for name, (spec, job, payload) in self.registry.schedules.items():
                 existing = await s.get(CronJob, name)
@@ -126,7 +126,7 @@ class Worker:
 
     async def enqueue_due_cron(self) -> int:
         """Turn due schedules into jobs. The unique key makes two workers racing here harmless."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         n = 0
         async with self.db.session() as s:
             due = (
@@ -216,7 +216,7 @@ def worker_lifespan(registry: JobRegistry, **worker_kwargs: Any) -> Callable[[An
             stop.set()
             try:
                 await asyncio.wait_for(task, timeout=15)
-            except (asyncio.TimeoutError, asyncio.CancelledError):
+            except (TimeoutError, asyncio.CancelledError):
                 task.cancel()
 
     return run

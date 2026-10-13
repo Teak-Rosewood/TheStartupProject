@@ -7,7 +7,7 @@ name = "tsp-engage"
 version = "0.1.0"
 description = "Reader engagement: position polls before and after reading, read receipts, weekly streaks, points and badges, onboarding."
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.13"
 license = { text = "MIT" }
 dependencies = ["sqlalchemy[asyncio]>=2", "fastapi>=0.110", "tsp-db", "tsp-audit", "tsp-pipeline", "tsp-cms"]
 

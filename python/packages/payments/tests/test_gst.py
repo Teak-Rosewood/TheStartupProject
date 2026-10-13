@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 from hypothesis import given
@@ -26,11 +26,11 @@ def test_gstin_checksum():
 @pytest.mark.parametrize(
     "when,expected",
     [
-        (datetime(2026, 4, 1, 0, 0, tzinfo=timezone.utc), ("2026-27", "2627")),
-        (datetime(2027, 3, 31, 12, 0, tzinfo=timezone.utc), ("2026-27", "2627")),
+        (datetime(2026, 4, 1, 0, 0, tzinfo=UTC), ("2026-27", "2627")),
+        (datetime(2027, 3, 31, 12, 0, tzinfo=UTC), ("2026-27", "2627")),
         # 31 March 20:00 UTC is already 1 April 01:30 in India: the new financial year
-        (datetime(2027, 3, 31, 20, 0, tzinfo=timezone.utc), ("2027-28", "2728")),
-        (datetime(2026, 1, 15, tzinfo=timezone.utc), ("2025-26", "2526")),
+        (datetime(2027, 3, 31, 20, 0, tzinfo=UTC), ("2027-28", "2728")),
+        (datetime(2026, 1, 15, tzinfo=UTC), ("2025-26", "2526")),
     ],
 )
 def test_financial_year_is_judged_in_ist(when, expected):

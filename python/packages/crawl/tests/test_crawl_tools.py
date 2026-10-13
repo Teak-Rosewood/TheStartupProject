@@ -1,5 +1,5 @@
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from types import SimpleNamespace
 
 import httpx
@@ -28,7 +28,7 @@ def page(markdown="Body text.", title="Doc", url="https://docs.example.com/a"):
         "h",
         None,
         None,
-        datetime.now(timezone.utc),
+        datetime.now(UTC),
         "text/html",
         "fake",
     )

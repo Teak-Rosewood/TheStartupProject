@@ -7,7 +7,7 @@ name = "tsp-i18n"
 version = "0.1.0"
 description = "Message catalogs, language negotiation (URL prefix, cookie, Accept-Language) and hreflang links."
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.13"
 license = { text = "MIT" }
 dependencies = ["babel>=2.12", "fastapi>=0.110"]
 

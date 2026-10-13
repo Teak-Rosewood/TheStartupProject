@@ -5,7 +5,7 @@ from __future__ import annotations
 import csv
 import io
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any, Protocol
 
@@ -149,7 +149,7 @@ class Invoicer:
         ).scalar_one_or_none()
         if existing:
             return existing
-        issued = now or datetime.now(timezone.utc)
+        issued = now or datetime.now(UTC)
         fy, short = financial_year(issued)
         buyer = self._buyer(profile, email)
         supply, tax, place = self._tax(payment.amount, payment.currency, buyer)
@@ -191,7 +191,7 @@ class Invoicer:
         *,
         now: datetime | None = None,
     ) -> Invoice:
-        issued = now or datetime.now(timezone.utc)
+        issued = now or datetime.now(UTC)
         fy, short = financial_year(issued)
         supply = original.supply_type
         taxed_as = (EXPORT if self.seller.lut else INTER) if supply == EXPORT else supply

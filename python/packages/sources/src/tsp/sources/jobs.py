@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import func, select
@@ -38,12 +38,12 @@ def register_jobs(registry: JobRegistry, runner: SourceRunner, checks: SourceChe
                 ctx.session,
                 "sources.check",
                 {"source_key": key},
-                unique_key=f"sources.check:{key}:{datetime.now(timezone.utc):%G-%V}",
+                unique_key=f"sources.check:{key}:{datetime.now(UTC):%G-%V}",
             )
 
     @registry.job("sources.reconcile")
     async def reconcile(ctx: JobContext, payload: dict[str, Any]) -> None:
-        if datetime.now(timezone.utc).weekday() != 0 and not payload.get("force"):
+        if datetime.now(UTC).weekday() != 0 and not payload.get("force"):
             return  # scheduled daily, runs on Mondays
         rows = (
             await ctx.session.execute(
@@ -73,7 +73,7 @@ def register_jobs(registry: JobRegistry, runner: SourceRunner, checks: SourceChe
 
     @registry.job("sources.dispatch")
     async def dispatch(ctx: JobContext, payload: dict[str, Any]) -> None:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         rows = (
             await ctx.session.execute(
                 select(Source.key, Source.schedule, func.max(Run.started_at))

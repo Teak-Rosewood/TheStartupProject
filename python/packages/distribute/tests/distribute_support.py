@@ -1,10 +1,10 @@
 import os
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from tsp.distribute import Item, Variant
 
 URL = os.environ.get("TSP_TEST_DATABASE_URL", "postgresql://postgres:test@127.0.0.1:55432/test")
-NOW = datetime(2026, 10, 12, 8, 0, tzinfo=timezone.utc)
+NOW = datetime(2026, 10, 12, 8, 0, tzinfo=UTC)
 
 PANCAKES = Item(
     id="r1",

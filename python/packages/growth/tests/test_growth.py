@@ -1,4 +1,5 @@
 import uuid
+from datetime import UTC
 from types import SimpleNamespace
 
 import httpx
@@ -63,9 +64,9 @@ def test_validate_rejects_malformed_events():
 
 
 def test_client_timestamps_cannot_rewrite_history():
-    from datetime import datetime, timedelta, timezone
+    from datetime import datetime, timedelta
 
-    now = datetime(2026, 10, 12, 12, 0, tzinfo=timezone.utc)
+    now = datetime(2026, 10, 12, 12, 0, tzinfo=UTC)
     base = {"name": "page_viewed", "anonymous_id": ANON}
     recent = (now - timedelta(minutes=5)).isoformat()
     assert events.validate({**base, "ts": recent}, now)["ts"] == now - timedelta(minutes=5)

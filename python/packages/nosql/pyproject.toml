@@ -7,7 +7,7 @@ name = "tsp-nosql"
 version = "0.1.0"
 description = "Typed single-table DynamoDB helper."
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.13"
 license = { text = "MIT" }
 dependencies = ["aioboto3>=13"]
 

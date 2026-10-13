@@ -244,7 +244,7 @@ async def _stream_dispatch(
     abort_signal: asyncio.Event | None,
     router: LLMRouter,
     capability: str = "chat",
-) -> AsyncGenerator[ChatCompletionChunk, None]:
+) -> AsyncGenerator[ChatCompletionChunk]:
     """Handle streaming dispatch with fallback support.
 
     This implementation attempts the first provider, and if a

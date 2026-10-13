@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import update
@@ -56,7 +56,7 @@ def validate(raw: dict[str, Any], now: datetime | None = None) -> dict[str, Any]
     if not isinstance(props, dict) or len(json.dumps(props)) > MAX_PROPERTIES_BYTES:
         raise InvalidEvent("properties must be an object under 4 KB")
     clean, _ = sanitize(props)
-    ts = now or datetime.now(timezone.utc)
+    ts = now or datetime.now(UTC)
     if raw.get(
         "ts"
     ):  # clients may report when it happened, but never in the future or older than a day

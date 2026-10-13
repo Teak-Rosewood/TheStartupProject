@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 name = "tsp-infra-app"
 version = "0.1.0"
 description = "CDK app that deploys the prod environment"
-requires-python = ">=3.10"
+requires-python = ">=3.13"
 dependencies = ["tsp-infra"]
 
 [tool.uv.sources]

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from html.parser import HTMLParser
 from urllib.parse import urljoin, urlsplit, urlunsplit
 
@@ -196,7 +196,7 @@ class HttpFetcher:
             content_hash=content_hash(markdown),
             etag=raw.etag,
             last_modified=raw.last_modified,
-            fetched_at=datetime.now(timezone.utc),
+            fetched_at=datetime.now(UTC),
             content_type=raw.content_type or "text/html",
             fetcher=self.name,
             canonical_url=canonical,

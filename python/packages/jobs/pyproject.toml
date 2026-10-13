@@ -7,7 +7,7 @@ name = "tsp-jobs"
 version = "0.1.0"
 description = "Postgres-backed background jobs: transactional enqueue, retries, scheduled jobs."
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.13"
 license = { text = "MIT" }
 dependencies = ["sqlalchemy[asyncio]>=2", "tsp-db"]
 

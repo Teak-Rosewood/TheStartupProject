@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 _EVERY = re.compile(r"^every (\d+)([smhd])$")
 _DAILY = re.compile(r"^daily ([01]\d|2[0-3]):([0-5]\d)$")
@@ -24,7 +24,7 @@ def parse_schedule(spec: str) -> str:
 def next_run(spec: str, after: datetime) -> datetime:
     """The first run strictly after ``after``."""
     s = parse_schedule(spec)
-    after = after.astimezone(timezone.utc)
+    after = after.astimezone(UTC)
     m = _EVERY.match(s)
     if m:
         return after + timedelta(seconds=int(m.group(1)) * _UNIT[m.group(2)])

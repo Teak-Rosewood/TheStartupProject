@@ -7,7 +7,7 @@ name = "tsp-flags"
 version = "0.1.0"
 description = "Feature flags and kill switches with per-user, per-org and per-plan rules."
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.13"
 license = { text = "MIT" }
 dependencies = ["sqlalchemy[asyncio]>=2", "fastapi>=0.110", "tsp-db", "tsp-audit"]
 

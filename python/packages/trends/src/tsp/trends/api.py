@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -41,7 +41,7 @@ def build_router(
         _: Any = Depends(member),
         s: AsyncSession = Depends(session),
     ) -> list[dict[str, Any]]:
-        d = day or (datetime.now(timezone.utc) - timedelta(days=1)).date()
+        d = day or (datetime.now(UTC) - timedelta(days=1)).date()
         return [_candidate(c) for c in await svc.candidates(s, org_id, d)]
 
     async def decide(
