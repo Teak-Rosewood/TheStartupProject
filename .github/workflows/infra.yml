@@ -16,7 +16,7 @@ jobs:
         working-directory: python
     steps:
       - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: astral-sh/setup-uv@v7
       - uses: actions/setup-node@v4
         with: { node-version: "22" }
       - run: uv sync --all-extras
@@ -41,7 +41,7 @@ jobs:
       TSP_ORIGIN_VERIFY: ${{ secrets.TSP_ORIGIN_VERIFY }}
     steps:
       - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: astral-sh/setup-uv@v7
       - uses: actions/setup-node@v4
         with: { node-version: "22" }
       - uses: aws-actions/configure-aws-credentials@v4
