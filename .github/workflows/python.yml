@@ -10,7 +10,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python: ["3.10", "3.13"]
+        python: ["3.13"] # the version the Docker images run
     defaults:
       run:
         working-directory: python
