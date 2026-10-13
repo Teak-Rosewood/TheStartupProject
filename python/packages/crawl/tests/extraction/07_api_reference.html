@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>List orders | Example Corp</title></head>
+<body>
+<header><nav><a href="/">Home</a> <a href="/pricing">Pricing</a> <a href="/docs">Docs</a> <a href="/blog">Blog</a> <a href="/login">Log in</a></nav></header>
+<div class="cookie-banner">We use cookies to improve your experience. <button>Accept all cookies</button></div>
+<main>
+<h1>List orders</h1>
+<p>Returns a page of orders for the authenticated account, newest first.</p>
+<pre><code>GET /v1/orders?limit=20&amp;status=paid</code></pre>
+<h2>Query parameters</h2>
+<table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead>
+<tbody><tr><td>limit</td><td>integer</td><td>Number of orders to return, from 1 to 100</td></tr><tr><td>status</td><td>string</td><td>Filter by paid, pending or refunded</td></tr><tr><td>cursor</td><td>string</td><td>Opaque value from the previous response</td></tr></tbody></table>
+<p>The response contains an orders array and a next_cursor field when more results exist.</p>
+</main>
+<aside class="related"><h3>Related articles</h3><ul><li>Create an order</li><li>Webhooks</li></ul></aside>
+<div class="newsletter"><h3>Subscribe to our newsletter</h3><p>Get the best stories in your inbox every week.</p><button>Sign up for free</button></div>
+<div class="share"><a href="#">Share on Twitter</a> <a href="#">Share on Facebook</a></div>
+<footer><p>© 2026 Example Corp. All rights reserved.</p><a href="/privacy">Privacy policy</a> <a href="/terms">Terms of service</a></footer>
+</body></html>

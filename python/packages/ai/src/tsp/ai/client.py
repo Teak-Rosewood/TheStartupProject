@@ -316,16 +316,17 @@ class ChatNamespace:
                 raise ProviderHttpError(result.choices[0].message.content or "", status=503)
             return result
         elif isinstance(result, dict):
+            first = (result.get("choices") or [{}])[0]
+            msg = first.get("message") or {}
             return ChatCompletionResponse(
                 model=model,
                 choices=[
                     Choice(
                         message=ChoiceMessage(
-                            content=result.get("choices", [{}])[0]
-                            .get("message", {})
-                            .get("content", ""),
+                            content=msg.get("content") or ("" if not msg.get("tool_calls") else None),
+                            tool_calls=msg.get("tool_calls") or None,
                         ),
-                        finish_reason="stop",
+                        finish_reason=first.get("finish_reason") or "stop",
                     )
                 ],
                 usage=result.get("usage"),

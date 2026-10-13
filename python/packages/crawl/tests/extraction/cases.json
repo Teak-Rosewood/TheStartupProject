@@ -1,0 +1,152 @@
+[
+  {
+    "id": "01_help_article",
+    "html": "01_help_article.html",
+    "reference": "01_help_article.md",
+    "boilerplate": [
+      "Accept all cookies",
+      "Subscribe to our newsletter",
+      "Sign up for free",
+      "Share on Twitter",
+      "All rights reserved",
+      "Related articles",
+      "Terms of service"
+    ],
+    "tables": 0
+  },
+  {
+    "id": "02_recipe",
+    "html": "02_recipe.html",
+    "reference": "02_recipe.md",
+    "boilerplate": [
+      "Accept all cookies",
+      "Subscribe to our newsletter",
+      "Sign up for free",
+      "Share on Twitter",
+      "All rights reserved",
+      "Related articles",
+      "Terms of service"
+    ],
+    "tables": 0
+  },
+  {
+    "id": "03_pricing_table",
+    "html": "03_pricing_table.html",
+    "reference": "03_pricing_table.md",
+    "boilerplate": [
+      "Accept all cookies",
+      "Subscribe to our newsletter",
+      "Sign up for free",
+      "Share on Twitter",
+      "All rights reserved",
+      "Related articles",
+      "Terms of service"
+    ],
+    "tables": 1
+  },
+  {
+    "id": "04_blog_post",
+    "html": "04_blog_post.html",
+    "reference": "04_blog_post.md",
+    "boilerplate": [
+      "Accept all cookies",
+      "Subscribe to our newsletter",
+      "Sign up for free",
+      "Share on Twitter",
+      "All rights reserved",
+      "Related articles",
+      "Terms of service"
+    ],
+    "tables": 0
+  },
+  {
+    "id": "05_changelog",
+    "html": "05_changelog.html",
+    "reference": "05_changelog.md",
+    "boilerplate": [
+      "Accept all cookies",
+      "Subscribe to our newsletter",
+      "Sign up for free",
+      "Share on Twitter",
+      "All rights reserved",
+      "Related articles",
+      "Terms of service"
+    ],
+    "tables": 0
+  },
+  {
+    "id": "06_faq",
+    "html": "06_faq.html",
+    "reference": "06_faq.md",
+    "boilerplate": [
+      "Accept all cookies",
+      "Subscribe to our newsletter",
+      "Sign up for free",
+      "Share on Twitter",
+      "All rights reserved",
+      "Related articles",
+      "Terms of service"
+    ],
+    "tables": 0
+  },
+  {
+    "id": "07_api_reference",
+    "html": "07_api_reference.html",
+    "reference": "07_api_reference.md",
+    "boilerplate": [
+      "Accept all cookies",
+      "Subscribe to our newsletter",
+      "Sign up for free",
+      "Share on Twitter",
+      "All rights reserved",
+      "Related articles",
+      "Terms of service"
+    ],
+    "tables": 1
+  },
+  {
+    "id": "08_news_article",
+    "html": "08_news_article.html",
+    "reference": "08_news_article.md",
+    "boilerplate": [
+      "Accept all cookies",
+      "Subscribe to our newsletter",
+      "Sign up for free",
+      "Share on Twitter",
+      "All rights reserved",
+      "Related articles",
+      "Terms of service"
+    ],
+    "tables": 0
+  },
+  {
+    "id": "09_spec_sheet",
+    "html": "09_spec_sheet.html",
+    "reference": "09_spec_sheet.md",
+    "boilerplate": [
+      "Accept all cookies",
+      "Subscribe to our newsletter",
+      "Sign up for free",
+      "Share on Twitter",
+      "All rights reserved",
+      "Related articles",
+      "Terms of service"
+    ],
+    "tables": 1
+  },
+  {
+    "id": "10_tutorial",
+    "html": "10_tutorial.html",
+    "reference": "10_tutorial.md",
+    "boilerplate": [
+      "Accept all cookies",
+      "Subscribe to our newsletter",
+      "Sign up for free",
+      "Share on Twitter",
+      "All rights reserved",
+      "Related articles",
+      "Terms of service"
+    ],
+    "tables": 0
+  }
+]

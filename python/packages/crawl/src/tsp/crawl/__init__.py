@@ -32,9 +32,23 @@ from .robots import RobotsCache
 from .safe_url import ResolvedURL, safe_url
 from .service import CrawlService, in_scope
 from .sitemap import SitemapEntry, parse_sitemap
+from .tools import (
+    LiveTools,
+    SearchProvider,
+    SearchResult,
+    SearxngSearch,
+    run_with_tools,
+    usage_recorder,
+)
 from .urls import canonical, normalise
 
 __all__ = [
+    "LiveTools",
+    "SearchProvider",
+    "SearchResult",
+    "SearxngSearch",
+    "run_with_tools",
+    "usage_recorder",
     "CrawlPage",
     "CrawlService",
     "CrawlSettings",
