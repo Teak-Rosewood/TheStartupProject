@@ -9,6 +9,7 @@
   - [Audit and compliance](modules/compliance.md) — consent, export, deletion, audit log
   - [Product operations](modules/product-ops.md) — flags, uploads, usage metering, AI gateway
   - [Distribution (`tsp.distribute`)](modules/distribute.md) — newsletters, share cards, SEO, AI image labels
+  - [Reader engagement (`tsp.engage`)](modules/engage.md) — polls, receipts, streaks, moderated takes
   - [Languages (`tsp.i18n`)](modules/i18n.md) — catalogs, negotiation, hreflang
   - [Vector search (`tsp.vector`)](modules/vector.md) — pgvector, hybrid search, ingestion, RAG building blocks
   - [Paywall (`tsp.paywall`)](modules/paywall.md) — metered and hard paywalls

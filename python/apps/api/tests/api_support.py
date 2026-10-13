@@ -8,5 +8,7 @@ ALL_TABLES = (
     "vector_chunks, vector_documents, vector_collections, crawl_pages, crawl_sources, "
     "pw_policies, pw_reads, pw_gifts, pw_credits, pw_unlocks, "
     "cms_complaint_events, cms_complaints, cms_windows, cms_corrections, cms_reviews, "
-    "cms_disclosure_templates, cms_check_results, cms_variants, cms_items, cms_versions"
+    "cms_disclosure_templates, cms_check_results, cms_variants, cms_items, cms_versions, "
+    "en_submissions, en_onboarding, en_badges, en_points, en_streaks, en_receipts, en_responses, en_polls, "
+    "pl_eval_runs, pl_events, pl_steps, pl_prompt_active, pl_prompts, pl_runs"
 )

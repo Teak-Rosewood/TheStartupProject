@@ -25,6 +25,8 @@ How long each kind of data stays, and why. Engineering should implement these as
 | Search index (passages and vectors of documents users add) | life of the document or account; removed within the same request as the document | contract; the passages are copies of the user's content |
 | Paywall reading history (signed-in readers) | 13 months, or until the account is deleted | applying the free-reads window; anonymous meters are not linked to a person |
 | Complaints about published content (name, email, message, handling notes) | 3 years after closing, then the personal details are removed and statistics stay; sooner on an erasure request | handling and showing regulators how complaints were dealt with |
+| Reader engagement (poll answers, reading receipts, streaks, points) | life of the account; removed with it | the features the reader uses; private to them |
+| Reader takes (accepted, rejected and pending) | accepted: until the author deletes the account; rejected: 90 days then removed | public display; appeal window |
 | Support conversations | 2 years after closure | support quality; legal claims |
 | Marketing leads and waitlist | until unsubscribe, plus 30 days; double opt-in proof for 3 years | consent |
 | Inactive accounts | warn at 12 months of inactivity, delete after 24 **(optional policy)** | data minimisation |

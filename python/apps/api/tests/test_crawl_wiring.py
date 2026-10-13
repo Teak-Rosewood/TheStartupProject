@@ -34,6 +34,9 @@ MODULES = [
     "tsp.metering",
     "tsp.vector",
     "tsp.crawl",
+    "tsp.cms",
+    "tsp.pipeline",
+    "tsp.engage",
 ]
 ANN = "aaaaaaaa-0000-0000-0000-00000000000a"
 PAGE = (
