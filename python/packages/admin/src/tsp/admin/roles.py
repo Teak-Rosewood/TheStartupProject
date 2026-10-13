@@ -23,6 +23,18 @@ GRANTS: dict[str, set[tuple[str, str]]] = {
         for act in _READ
     }
     | {(view, act) for view in ("payment", "subscription", "flag", "usage-record") for act in _READ}
+    | {
+        (view, act)
+        for view in (
+            "cms-item",
+            "cms-correction",
+            "cms-review",
+            "cms-complaint",
+            "cms-complaint-event",
+            "cms-window",
+        )
+        for act in _READ
+    }
     | {("staff-actions", "*")},
     "finance": {
         (view, act)

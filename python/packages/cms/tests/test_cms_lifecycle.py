@@ -31,7 +31,7 @@ def notified():
 
 @pytest.fixture
 def svc(session, clock, notified):
-    async def notify(item, deadline):
+    async def notify(session, item, deadline):
         notified.append((item.slug, deadline))
 
     return CmsService(session, clock=clock, notify_review_due=notify)

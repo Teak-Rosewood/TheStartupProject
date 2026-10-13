@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 
 import httpx
@@ -31,10 +32,14 @@ def mount_admin(
     compliance: Compliance | None = None,
     payments: Payments | None = None,
     flags: Flags | None = None,
+    extra_views: Sequence[type] = (),
     http: httpx.AsyncClient | None = None,
     engine: AsyncEngine | None = None,
 ) -> Admin:
     """Mount the console at ``settings.base_path``. Call after the other routes are added.
+
+    ``extra_views`` adds read-only model views from other modules (for example ``tsp.cms.admin.CMS_VIEWS``);
+    their identities need a grant in ``roles.GRANTS`` or only superadmins see them.
 
     Uses its own small engine (no pool: staff traffic is tiny) so it works whatever the API's
     lifespan does. The OIDC endpoints are mounted first so they win over the admin app.
@@ -52,7 +57,7 @@ def mount_admin(
         authorization_backend=RoleAuthorization(engine),
         templates_dir=str(Path(__file__).parent / "templates"),
     )
-    for view in VIEWS:
+    for view in (*VIEWS, *extra_views):
         admin.add_view(view)
     admin.add_base_view(make_view(engine, accounts, compliance, payments, flags))
     admin.add_base_view(make_finance_view(engine))

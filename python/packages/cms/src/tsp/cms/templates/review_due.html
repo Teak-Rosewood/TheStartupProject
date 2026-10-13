@@ -1,0 +1,3 @@
+{% extends "base.html" %}{% block subject %}Review due: {{ title }}{% endblock %}
+{% block body %}<p>"{{ title }}" is due for review. Decide whether it stays living or is frozen.</p>
+<p>If nobody decides by <strong>{{ deadline }}</strong>, it is frozen automatically and readers are told it is no longer updated.</p>{% endblock %}

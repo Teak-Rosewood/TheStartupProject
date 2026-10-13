@@ -6,5 +6,7 @@ ALL_TABLES = (
     "transfers, refunds, payments, subscriptions, payment_customers, plans, billing_profiles, api_keys, invites, "
     "memberships, orgs, users, consents, data_requests, audit_log, alembic_version, notes, flags, files, usage_records, ai_catalog, ai_batches, "
     "vector_chunks, vector_documents, vector_collections, crawl_pages, crawl_sources, "
-    "pw_policies, pw_reads, pw_gifts, pw_credits, pw_unlocks"
+    "pw_policies, pw_reads, pw_gifts, pw_credits, pw_unlocks, "
+    "cms_complaint_events, cms_complaints, cms_windows, cms_corrections, cms_reviews, "
+    "cms_disclosure_templates, cms_check_results, cms_variants, cms_items, cms_versions"
 )
