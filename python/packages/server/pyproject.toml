@@ -9,7 +9,7 @@ description = "FastAPI app factory: health, readiness, origin check, CORS, JSON 
 readme = "README.md"
 requires-python = ">=3.13"
 license = { text = "MIT" }
-dependencies = ["fastapi>=0.110", "uvicorn[standard]>=0.29", "pydantic>=2", "tsp-auth", "tsp-db", "tsp-cache", "tsp-nosql"]
+dependencies = ["fastapi>=0.110", "uvicorn[standard]>=0.54.0", "pydantic>=2", "tsp-auth", "tsp-db", "tsp-cache", "tsp-nosql"]
 
 [tool.uv.sources]
 tsp-auth = { workspace = true }
