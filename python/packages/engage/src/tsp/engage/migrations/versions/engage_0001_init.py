@@ -26,7 +26,9 @@ def _ts(name: str, *, default: bool = False) -> sa.Column:
 def upgrade() -> None:
     op.create_table(
         "en_polls",
-        sa.Column("id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
+        sa.Column(
+            "id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")
+        ),
         sa.Column("org_id", sa.Text, nullable=False),
         sa.Column("item_id", sa.Text, nullable=False),
         sa.Column("kind", sa.Text, nullable=False),
@@ -38,7 +40,12 @@ def upgrade() -> None:
     op.create_index("ix_en_polls_item", "en_polls", ["org_id", "item_id"])
     op.create_table(
         "en_responses",
-        sa.Column("poll_id", UUID(as_uuid=True), sa.ForeignKey("en_polls.id", ondelete="CASCADE"), primary_key=True),
+        sa.Column(
+            "poll_id",
+            UUID(as_uuid=True),
+            sa.ForeignKey("en_polls.id", ondelete="CASCADE"),
+            primary_key=True,
+        ),
         sa.Column("user_id", sa.Text, primary_key=True),
         sa.Column("phase", sa.Text, primary_key=True),
         sa.Column("x", sa.Float, nullable=False),
@@ -83,7 +90,9 @@ def upgrade() -> None:
         sa.Column("ref_id", sa.Text, server_default="", nullable=False),
         _ts("at", default=True),
         # an award is idempotent: the same reason for the same thing is paid once
-        sa.UniqueConstraint("user_id", "org_id", "reason", "ref_kind", "ref_id", name="uq_en_points_ref"),
+        sa.UniqueConstraint(
+            "user_id", "org_id", "reason", "ref_kind", "ref_id", name="uq_en_points_ref"
+        ),
     )
     op.create_index("ix_en_points_user", "en_points", ["user_id", "org_id"])
     op.create_table(
@@ -103,5 +112,13 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    for t in ("en_onboarding", "en_badges", "en_points", "en_streaks", "en_receipts", "en_responses", "en_polls"):
+    for t in (
+        "en_onboarding",
+        "en_badges",
+        "en_points",
+        "en_streaks",
+        "en_receipts",
+        "en_responses",
+        "en_polls",
+    ):
         op.drop_table(t)

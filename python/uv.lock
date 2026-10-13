@@ -37,6 +37,7 @@ members = [
     "tsp-crawl",
     "tsp-db",
     "tsp-distribute",
+    "tsp-engage",
     "tsp-flags",
     "tsp-graph",
     "tsp-growth",
@@ -7995,6 +7996,26 @@ requires-dist = [
     { name = "tsp-storage", editable = "packages/storage" },
 ]
 provides-extras = ["test"]
+
+[[package]]
+name = "tsp-engage"
+version = "0.1.0"
+source = { editable = "packages/engage" }
+dependencies = [
+    { name = "fastapi" },
+    { name = "sqlalchemy", version = "2.0.54", source = { registry = "https://pypi.org/simple" }, extra = ["asyncio"], marker = "python_full_version < '3.11'" },
+    { name = "sqlalchemy", version = "2.1.4", source = { registry = "https://pypi.org/simple" }, extra = ["asyncio"], marker = "python_full_version >= '3.11'" },
+    { name = "tsp-audit" },
+    { name = "tsp-db" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastapi", specifier = ">=0.110" },
+    { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2" },
+    { name = "tsp-audit", editable = "packages/audit" },
+    { name = "tsp-db", editable = "packages/db" },
+]
 
 [[package]]
 name = "tsp-flags"

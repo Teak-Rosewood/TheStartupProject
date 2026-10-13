@@ -28,7 +28,10 @@ class Poll(Base):
     __tablename__ = "en_polls"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()")
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+        server_default=text("gen_random_uuid()"),
     )
     org_id: Mapped[str] = mapped_column(Text)
     item_id: Mapped[str] = mapped_column(Text)
@@ -97,7 +100,9 @@ class Point(Base):
     at: Mapped[datetime] = mapped_column(_TS, server_default=func.now())
 
     __table_args__ = (
-        UniqueConstraint("user_id", "org_id", "reason", "ref_kind", "ref_id", name="uq_en_points_ref"),
+        UniqueConstraint(
+            "user_id", "org_id", "reason", "ref_kind", "ref_id", name="uq_en_points_ref"
+        ),
         Index("ix_en_points_user", "user_id", "org_id"),
     )
 
@@ -118,5 +123,3 @@ class OnboardingStep(Base):
     org_id: Mapped[str] = mapped_column(Text, primary_key=True)
     step: Mapped[str] = mapped_column(Text, primary_key=True)
     completed_at: Mapped[datetime] = mapped_column(_TS, server_default=func.now())
-
-
