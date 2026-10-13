@@ -36,6 +36,14 @@ The render worker (`python -m tsp.crawl.render_worker`, image in `docker/crawl-r
 
 Turn it on in the API with `CRAWL_RENDER=fargate` and `CRAWL_RENDER_TOKEN` (at least 24 random characters; the routes answer 401 without it and are not mounted at all unless both are set). Without it, an `always` source fails each page with "rendering is not configured" rather than fetching unrendered text.
 
+### Infrastructure
+
+Set `crawl: {enabled: true, render: fargate}` in the environment config (`CrawlConfig`). That adds an ECR repository `crawl-render`, a Fargate Spot ARM task definition (1 vCPU, 2 GB), a security group with **no inbound rules** and egress only to ports 80, 443 and DNS, a task role with no permissions, and passes `CRAWL_RENDER=fargate` plus the token to the API. Create the token by hand before deploying: a secret `/tsp-<env>/crawl/render-token` holding at least 24 random characters. Build and push `docker/crawl-render/Dockerfile` to the new repository with the same tag as the API.
+
+Start a worker with the `RunTaskCommand` output of the backend stack (`aws ecs run-task ... FARGATE_SPOT`); it renders until the queue has been empty for `idle_exit_minutes`, then exits. The task's public IP is the only network exposure; block your own VPC ranges and the metadata address from it at the subnet level if you can, because Chromium follows links inside pages.
+
+Upgrade every job worker (the API and any `tsp-jobs worker`) before turning rendering on: workers from before the `queue` column existed claim jobs from every queue.
+
 ## Setup
 
 ```python
@@ -49,5 +57,6 @@ Migrate with `modules=[..., "tsp.crawl"]` (after `tsp.vector`). `python/apps/api
 
 ## Not done yet
 
-- Infrastructure for the render worker (CDK config, Fargate Spot task definition, the job that starts it): start a task by hand with `aws ecs run-task` until it exists.
+- A job that starts the render worker when `crawl.render` has pages waiting (today you start it by hand, see above), and alarms for queue age and render failures.
+- The render image has not been built or run: pin the Chromium and Crawl4AI versions on its first real build.
 - Live tools for `tsp.ai` tool calling (`web_search`, `fetch_url`), the extraction evaluation set, and crawl alarms.

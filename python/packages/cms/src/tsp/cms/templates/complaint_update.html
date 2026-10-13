@@ -1,0 +1,5 @@
+{% extends "base.html" %}{% block subject %}{% if final %}Update on{% else %}About{% endif %} your complaint {{ reference }}{% endblock %}
+{% block body %}<p>Hello {{ name }},</p>
+<p>About your complaint <strong>{{ reference }}</strong>:</p>
+<blockquote style="margin:12px 0;padding:0 12px;border-left:3px solid #ccc">{{ message }}</blockquote>
+{% if final %}<p>This closes the complaint. If you disagree, reply to this email and quote the reference.</p>{% endif %}{% endblock %}

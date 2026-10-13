@@ -1,0 +1,3 @@
+{% extends "base.html" %}{% block subject %}Complaint {{ reference }}: {{ headline }}{% endblock %}
+{% block body %}<p>Complaint <strong>{{ reference }}</strong> ({{ category }}, level {{ level }}): {{ headline }}.</p>
+<p>Assigned to {{ assigned_to }}.{% if due %} Next deadline: {{ due }}.{% endif %}</p>{% endblock %}

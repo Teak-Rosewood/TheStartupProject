@@ -11,6 +11,7 @@ from typing import Any
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 from tsp.accounts import Invite, Org, User
+from tsp.cms import templates_dir as cms_templates_dir
 from tsp.compliance import DataRequest
 from tsp.jobs import JobRegistry
 from tsp.notify import Notifier, Outgoing, SesTransport, Templates
@@ -42,7 +43,7 @@ def build_notifier(env: Mapping[str, str] | None = None) -> Notifier:
     )
     return Notifier(
         transport,
-        Templates(),
+        Templates(cms_templates_dir()),
         sender=e.get("SES_FROM", "dev <no-reply@localhost>"),
         brand=e.get("BRAND_NAME", "Your product"),
         base_url=app_url,

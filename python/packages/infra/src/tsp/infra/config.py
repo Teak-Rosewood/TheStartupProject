@@ -154,6 +154,24 @@ class VectorConfig(BaseModel):
         return v
 
 
+class CrawlConfig(BaseModel):
+    """Website ingestion (docs/modules/crawl.md). Fetching runs inside the API at no extra cost.
+    ``render: fargate`` adds a browser worker for JavaScript pages: a Fargate Spot task that has no
+    inbound access, no database access and an IAM role with no permissions."""
+
+    enabled: bool = False
+    render: Literal["none", "fargate"] = "none"
+    idle_exit_minutes: int = Field(
+        default=10, ge=1, le=120
+    )  # the task exits when the queue is empty
+
+    @model_validator(mode="after")
+    def _render_needs_crawl(self) -> CrawlConfig:
+        if self.render != "none" and not self.enabled:
+            raise ValueError("crawl.render needs crawl.enabled")
+        return self
+
+
 class GithubConfig(BaseModel):
     owner: str
     repo: str
@@ -180,6 +198,7 @@ class EnvConfig(BaseModel):
     growth: GrowthConfig = GrowthConfig()
     uploads: UploadsConfig = UploadsConfig()
     vector: VectorConfig = VectorConfig()
+    crawl: CrawlConfig = CrawlConfig()
     ai: AiConfig = AiConfig()
     edge: EdgeConfig = EdgeConfig()
     github: GithubConfig

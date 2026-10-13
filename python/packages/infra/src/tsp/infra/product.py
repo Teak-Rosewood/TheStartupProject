@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import aws_cdk as cdk
+import aws_cdk.aws_ec2 as ec2
+import aws_cdk.aws_ecr as ecr
 import aws_cdk.aws_ecs as ecs
 import aws_cdk.aws_iam as iam
 import aws_cdk.aws_s3 as s3
@@ -10,6 +12,7 @@ import aws_cdk.aws_s3vectors as s3vectors
 import aws_cdk.aws_secretsmanager as secretsmanager
 from constructs import Construct
 
+from .compute import Host
 from .config import EnvConfig
 
 
@@ -116,4 +119,85 @@ class Vector(Construct):
                 ],
                 resources=[arn, f"{arn}/index/*"],
             )
+        )
+
+
+class Crawl(Construct):
+    """Website ingestion settings for the API and, with ``render: fargate``, the browser render worker.
+
+    The worker is a Fargate Spot task definition, not a service: it starts when there are pages to
+    render and exits after ``idle_exit_minutes`` of nothing. It sits in a public subnet with a
+    security group that has no inbound rules, an IAM role with no permissions, and no database or
+    secret access except the render token. It reaches the API over HTTPS through the edge.
+    Start one with the ``RunTaskCommand`` stack output."""
+
+    def __init__(
+        self,
+        scope: Construct,
+        id: str,
+        *,
+        config: EnvConfig,
+        host: Host,
+        vpc: ec2.IVpc,
+        repository: ecr.IRepository | None,
+    ) -> None:
+        super().__init__(scope, id)
+        c = config.crawl
+        self.environment: dict[str, str] = {}
+        self.secrets: dict[str, ecs.Secret] = {}
+        self.task_definition: ecs.FargateTaskDefinition | None = None
+        if c.render != "fargate" or repository is None:
+            return
+        # Created by hand so the token never passes through CloudFormation (at least 24 random characters).
+        token = secretsmanager.Secret.from_secret_name_v2(
+            self, "RenderToken", f"/{config.prefix}/crawl/render-token"
+        )
+        self.environment["CRAWL_RENDER"] = "fargate"
+        self.secrets["CRAWL_RENDER_TOKEN"] = ecs.Secret.from_secrets_manager(token)
+
+        host.cluster.enable_fargate_capacity_providers()
+        self.task_definition = ecs.FargateTaskDefinition(
+            self,
+            "RenderTask",
+            cpu=1024,
+            memory_limit_mib=2048,
+            runtime_platform=ecs.RuntimePlatform(
+                cpu_architecture=ecs.CpuArchitecture.ARM64,
+                operating_system_family=ecs.OperatingSystemFamily.LINUX,
+            ),
+        )
+        self.task_definition.add_container(
+            "render",
+            image=ecs.ContainerImage.from_ecr_repository(repository, config.image_tag),
+            environment={
+                "CRAWL_API_URL": f"https://{config.domain.app}/api",
+                "CRAWL_IDLE_EXIT_MINUTES": str(c.idle_exit_minutes),
+            },
+            secrets={"CRAWL_RENDER_TOKEN": self.secrets["CRAWL_RENDER_TOKEN"]},
+            logging=ecs.LogDrivers.aws_logs(
+                stream_prefix=f"{config.prefix}-crawl-render", log_retention=host.log_retention
+            ),
+        )
+        sg = ec2.SecurityGroup(
+            self,
+            "RenderSg",
+            vpc=vpc,
+            description="Render worker: no inbound, outbound HTTPS and DNS",
+            allow_all_outbound=False,
+        )
+        sg.add_egress_rule(ec2.Peer.any_ipv4(), ec2.Port.tcp(443), "HTTPS to the web and the API")
+        sg.add_egress_rule(ec2.Peer.any_ipv4(), ec2.Port.tcp(80), "HTTP to the web")
+        sg.add_egress_rule(ec2.Peer.any_ipv4(), ec2.Port.udp(53), "DNS")
+        sg.add_egress_rule(ec2.Peer.any_ipv4(), ec2.Port.tcp(53), "DNS over TCP")
+        subnets = ",".join(s.subnet_id for s in vpc.public_subnets)
+        cdk.CfnOutput(
+            self,
+            "RunTaskCommand",
+            value=(
+                f"aws ecs run-task --cluster {host.cluster.cluster_name} "
+                f"--task-definition {self.task_definition.family} "
+                "--capacity-provider-strategy capacityProvider=FARGATE_SPOT,weight=1 "
+                f'--network-configuration "awsvpcConfiguration={{subnets=[{subnets}],'
+                f'securityGroups=[{sg.security_group_id}],assignPublicIp=ENABLED}}"'
+            ),
         )
