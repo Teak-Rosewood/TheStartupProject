@@ -123,3 +123,37 @@ class OnboardingStep(Base):
     org_id: Mapped[str] = mapped_column(Text, primary_key=True)
     step: Mapped[str] = mapped_column(Text, primary_key=True)
     completed_at: Mapped[datetime] = mapped_column(_TS, server_default=func.now())
+
+
+class Submission(Base):
+    """A reader's take on an item: a side and some text. No parent, no replies, by design."""
+
+    __tablename__ = "en_submissions"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+        server_default=text("gen_random_uuid()"),
+    )
+    org_id: Mapped[str] = mapped_column(Text)
+    item_id: Mapped[str] = mapped_column(Text)
+    user_id: Mapped[str] = mapped_column(Text)
+    author_name: Mapped[str] = mapped_column(Text, server_default="")
+    side: Mapped[str] = mapped_column(Text)  # free text, for example for | against
+    body: Mapped[str] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(
+        Text, server_default="pending"
+    )  # pending|accepted|rejected|appealed
+    needs_review: Mapped[bool] = mapped_column(Boolean, server_default="false")
+    reasons: Mapped[list[Any]] = mapped_column(JSONB, server_default="[]")
+    scores: Mapped[dict[str, Any]] = mapped_column(JSONB, server_default="{}")
+    points_awarded: Mapped[int] = mapped_column(Integer, server_default="0")
+    run_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    appeal_complaint_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    created_at: Mapped[datetime] = mapped_column(_TS, server_default=func.now())
+    decided_at: Mapped[datetime | None] = mapped_column(_TS)
+
+    __table_args__ = (
+        UniqueConstraint("item_id", "user_id", "side", name="uq_en_submissions_take"),
+    )

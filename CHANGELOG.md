@@ -8,6 +8,7 @@ Format: [Keep a Changelog](https://keepachangelog.com). Versioning: [SemVer](htt
 - AWS backend stack: `tsp.infra`, `tsp.server`, `tsp.auth`, `tsp.db`, `tsp.cache`, `tsp.nosql`, CI/CD workflows, runbooks (`docs/aws`).
 - Legal templates and startup guides (`docs/legal`, `docs/startup`).
 - `tsp.distribute`: newsletters, share cards with Devanagari support, structured data, sitemaps, labelled AI illustrations.
+- `tsp.engage`: polls, read receipts, streaks, points and badges, onboarding, moderated takes with appeals.
 - `tsp.cms` K4-C: complaints desk with deadlines and escalation, restricted-mode windows, admin views; the CMS is wired into the sample API.
 - `tsp.cms` K4-B: public corrections log and RSS, review cadence with automatic freezing, `is_refreshable`.
 - `tsp.i18n`: message catalogs, language negotiation, hreflang; Hindi-aware full-text search in `tsp.vector`.

@@ -5,7 +5,7 @@ from typing import Any
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .models import Badge, OnboardingStep, Point, Receipt, Response, Streak
+from .models import Badge, OnboardingStep, Point, Receipt, Response, Streak, Submission
 
 
 def register_with_compliance(compliance: Any) -> None:
@@ -21,11 +21,12 @@ def register_with_compliance(compliance: Any) -> None:
             "streaks": [{"org": r.org_id, "current": r.current, "best": r.best} for r in (await rows(Streak)).scalars()],
             "points": [{"org": r.org_id, "reason": r.reason, "points": r.points, "at": r.at} for r in (await rows(Point)).scalars()],
             "badges": [{"org": r.org_id, "badge": r.badge, "at": r.at} for r in (await rows(Badge)).scalars()],
+            "submissions": [{"item": r.item_id, "side": r.side, "body": r.body, "status": r.status, "reasons": r.reasons, "at": r.created_at} for r in (await rows(Submission)).scalars()],
             "onboarding": [{"org": r.org_id, "step": r.step, "at": r.completed_at} for r in (await rows(OnboardingStep)).scalars()],
         }  # fmt: skip
 
     async def erase(session: AsyncSession, sub: str) -> None:
-        for model in (Response, Receipt, Streak, Point, Badge, OnboardingStep):
+        for model in (Response, Receipt, Streak, Point, Badge, OnboardingStep, Submission):
             await session.execute(delete(model).where(model.user_id == sub))
 
     compliance.register_exporter("engage", export)

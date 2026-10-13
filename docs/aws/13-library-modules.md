@@ -28,6 +28,7 @@
 | `tsp-paywall` (`tsp.paywall`) | runtime | metered and hard paywalls, signed anonymous meter, shared-network-safe device signal, verified crawlers, gifts, credits; see [paywall](../modules/paywall.md) |
 | `tsp-graph` (`tsp.graph`) | runtime | entities, claims with provenance, dated links, stances and time series on Postgres; see [knowledge graph](../modules/graph.md) |
 | `tsp-pipeline` (`tsp.pipeline`) | runtime | durable AI workflows on jobs: checkpoints, budgets, traces, human steps, prompt registry; see [AI workflows](../modules/pipeline.md) |
+| `tsp-engage` (`tsp.engage`) | runtime | position polls, read receipts, weekly streaks, points and badges, onboarding, moderated takes with appeals; see [reader engagement](../modules/engage.md) |
 | `tsp-cms` (`tsp.cms`) | runtime | content items with versions, language variants, review workflow, publish checks, scheduled publishing; see [editorial backend](../modules/cms.md) |
 | `tsp-ai` (`tsp.ai`) | runtime | multi-provider LLM client and server (already built) |
 

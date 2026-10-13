@@ -42,6 +42,10 @@ from tsp.crawl import (
 from tsp.crawl import build_router as crawl_router
 from tsp.crawl import register_jobs as crawl_jobs
 from tsp.crawl import register_with_compliance as crawl_compliance
+from tsp.engage import build_router as engage_router
+from tsp.engage import build_submissions_router as engage_submissions_router
+from tsp.engage import register_jobs as engage_jobs
+from tsp.engage import register_with_compliance as engage_compliance
 from tsp.flags import Flags
 from tsp.flags import build_router as flags_router
 from tsp.growth import api as growth_api
@@ -81,6 +85,7 @@ from .ai import build_router as build_ai_router
 from .ai_batches import register_batch_jobs
 from .billing import build_payments, plans_path, sync_plans_on_start
 from .cms import Cms, cms_settings, principal_dependency
+from .engage import EngageModeration, engage_config, subscriber_check
 from .growth import build_leads, optional_sub, set_first_touch
 from .notifications import Hooks, build_notifier, build_registry
 from .routes import erase_notes, export_notes, gated, router
@@ -323,6 +328,16 @@ def build_app() -> FastAPI:
         lifecycle=cms.settings.lifecycle,
         notify_review_due=cms.notify_review_due,
     )
+    engage_cfg = engage_config()
+    engage_compliance(compliance)
+    engage_jobs(registry)
+    moderation = (
+        EngageModeration(engage_cfg, llm, flags, cms.desk, subscriber_check(accounts, payments))
+        if llm is not None
+        else None
+    )
+    if moderation is not None:
+        moderation.runner.register(registry)
     uploads = build_uploads(settings)
     uploads.register_with_compliance(compliance)
     vector = build_vector(settings, llm, uploads, flags, payments) if llm is not None else None
@@ -341,6 +356,8 @@ def build_app() -> FastAPI:
         background.insert(0, vector_lifespan(vector))  # before the worker starts taking jobs
     if crawl is not None:
         background.insert(0, crawl_lifespan(crawl))
+    if moderation is not None:
+        background.insert(0, moderation.lifespan())
     if llm is not None:
         background.insert(0, llm_lifespan(llm))
         background.append(catalog_lifespan(llm))
@@ -450,6 +467,18 @@ def build_app() -> FastAPI:
                 cms.desk,
                 get_cache,
                 captcha=human if captcha.enabled else None,
+            ),
+            prefix=settings.api_prefix,
+        )
+    # Readers: polls, read receipts, streaks and points; takes with moderation need an AI provider.
+    app.include_router(
+        engage_router(api.account, db_session, engage_cfg, allow_ping=None),
+        prefix=settings.api_prefix,
+    )
+    if moderation is not None:
+        app.include_router(
+            engage_submissions_router(
+                api.account, db_session, moderation.submissions, cms_principal
             ),
             prefix=settings.api_prefix,
         )

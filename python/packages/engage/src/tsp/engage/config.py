@@ -9,6 +9,7 @@ DEFAULT_POINTS = {
     "streak_week": 20,
     "onboarding": 10,
     "submission_accepted": 15,
+    "submission_evidence": 10,  # bonus when the substance score is high
 }
 
 
@@ -40,6 +41,10 @@ class EngageConfig:
     bins: int = 10
     points: dict[str, int] = field(default_factory=lambda: dict(DEFAULT_POINTS))
     read_policy: ReadPolicy = field(default_factory=ReadPolicy)
+    require_subscription: bool = (
+        True  # submitting needs an active subscription (see Submissions.entitled)
+    )
+    evidence_threshold: float = 0.7  # substance score that earns the evidence bonus
     required_onboarding: tuple[str, ...] = ("welcome", "interests")
     badges: tuple[BadgeRule, ...] = (
         BadgeRule("first_read", reason="read", count=1),

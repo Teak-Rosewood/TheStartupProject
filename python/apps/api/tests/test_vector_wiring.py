@@ -33,6 +33,9 @@ MODULES = [
     "tsp.storage",
     "tsp.metering",
     "tsp.vector",
+    "tsp.cms",
+    "tsp.pipeline",
+    "tsp.engage",
 ]
 ANN = "aaaaaaaa-0000-0000-0000-00000000000a"
 DOC = "The cat sat on the mat and purred.\n\nTomatoes need sun and water every day."

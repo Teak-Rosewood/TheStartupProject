@@ -52,6 +52,11 @@ def _levels(spec: str) -> tuple[Level, ...]:
     return tuple(out)
 
 
+def _with_appeals(categories: tuple[str, ...]) -> tuple[str, ...]:
+    """Rejected takes are appealed as complaints of this category (see tsp.engage)."""
+    return categories if "moderation_appeal" in categories else (*categories, "moderation_appeal")
+
+
 def cms_settings(env: Mapping[str, str] | None = None) -> CmsSettings:
     """Everything is optional; the defaults are neutral. Set the real deadlines your rules require."""
     e = os.environ if env is None else env
@@ -65,9 +70,11 @@ def cms_settings(env: Mapping[str, str] | None = None) -> CmsSettings:
         warn_ack_hours=base.warn_ack_hours,
         warn_resolve_days=base.warn_resolve_days,
         levels=_levels(e["CMS_COMPLAINT_LEVELS"]) if e.get("CMS_COMPLAINT_LEVELS") else base.levels,
-        categories=tuple(c.strip() for c in e["CMS_COMPLAINT_CATEGORIES"].split(",") if c.strip())
-        if e.get("CMS_COMPLAINT_CATEGORIES")
-        else base.categories,
+        categories=_with_appeals(
+            tuple(c.strip() for c in e["CMS_COMPLAINT_CATEGORIES"].split(",") if c.strip())
+            if e.get("CMS_COMPLAINT_CATEGORIES")
+            else base.categories
+        ),
     )
     return CmsSettings(
         public_org=e.get("CMS_PUBLIC_ORG") or None,
