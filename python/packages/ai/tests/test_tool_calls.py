@@ -15,7 +15,10 @@ class Tooling(StubProvider):
                             {
                                 "id": "call_1",
                                 "type": "function",
-                                "function": {"name": "fetch_url", "arguments": '{"url": "https://example.com"}'},
+                                "function": {
+                                    "name": "fetch_url",
+                                    "arguments": '{"url": "https://example.com"}',
+                                },
                             }
                         ],
                     },

@@ -36,8 +36,11 @@ from tsp.crawl import (
     CrawlService,
     CrawlSettings,
     HttpFetcher,
+    RenderScaler,
+    RenderTaskSpec,
     RobotsCache,
     build_render_router,
+    register_render_scaler,
 )
 from tsp.crawl import build_router as crawl_router
 from tsp.crawl import register_jobs as crawl_jobs
@@ -332,6 +335,14 @@ def build_app() -> FastAPI:
     crawl = build_crawl(vector, payments) if vector is not None else None
     if crawl is not None:
         crawl_jobs(registry, crawl)
+        render_spec = RenderTaskSpec.from_env()
+        if render_spec is not None:  # CRAWL_RENDER=fargate: start the render worker when pages wait
+            import boto3
+
+            register_render_scaler(
+                registry,
+                RenderScaler(boto3.client("ecs", region_name=settings.aws_region), render_spec),
+            )
         crawl_compliance(compliance, crawl)
     # Stage 0 runs jobs inside the API process (no memory for a second container); set
     # TSP_JOBS_INLINE=0 when you run `tsp-jobs worker` separately.

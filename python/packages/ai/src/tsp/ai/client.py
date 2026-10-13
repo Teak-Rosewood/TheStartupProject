@@ -323,7 +323,8 @@ class ChatNamespace:
                 choices=[
                     Choice(
                         message=ChoiceMessage(
-                            content=msg.get("content") or ("" if not msg.get("tool_calls") else None),
+                            content=msg.get("content")
+                            or ("" if not msg.get("tool_calls") else None),
                             tool_calls=msg.get("tool_calls") or None,
                         ),
                         finish_reason=first.get("finish_reason") or "stop",

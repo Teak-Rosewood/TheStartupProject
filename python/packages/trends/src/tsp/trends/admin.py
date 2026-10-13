@@ -49,3 +49,13 @@ class CandidateView(_ReadOnly, model=CandidateRow):
         CandidateRow.status,
     ]
     column_default_sort = [(CandidateRow.day, True), (CandidateRow.score, True)]
+
+
+TREND_VIEWS = [TopicView, SignalView, CandidateView]
+
+# sqladmin derives ``identity`` from the model class name when the class is created and ignores one
+# set in the class body, so set it afterwards. The identity is also what the staff roles grant on.
+for _view, _identity in zip(
+    TREND_VIEWS, ("trend-topic", "trend-signal", "trend-candidate"), strict=True
+):
+    _view.identity = _identity

@@ -216,6 +216,8 @@ class BackendStack(cdk.Stack):
         if self.mail:
             self.mail.grant(self.api.task_definition.task_role)
         self.vector.grant(self.api.task_definition.task_role)
+        if self.crawl:
+            self.crawl.grant(self.api.task_definition.task_role)
         if self.uploads:
             self.uploads.grant(self.api.task_definition.task_role)
         # Account deletion: end sessions, disable and delete users of this pool only.

@@ -28,6 +28,7 @@ from .models import CrawlPage, CrawlSource
 from .page import Fetcher, NotModified, Page
 from .politeness import DomainLimiter
 from .render_api import RenderResult, build_render_router
+from .render_scaler import RenderScaler, RenderTaskSpec, register_render_scaler
 from .robots import RobotsCache
 from .safe_url import ResolvedURL, safe_url
 from .service import CrawlService, in_scope
@@ -43,6 +44,9 @@ from .tools import (
 from .urls import canonical, normalise
 
 __all__ = [
+    "RenderScaler",
+    "RenderTaskSpec",
+    "register_render_scaler",
     "LiveTools",
     "SearchProvider",
     "SearchResult",

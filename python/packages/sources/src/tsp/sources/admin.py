@@ -63,3 +63,11 @@ class CheckView(_ReadOnly, model=Check):
         Check.notes,
     ]
     column_default_sort = [(Check.checked_at, True)]
+
+
+SOURCE_VIEWS = [SourceView, RunView, CheckView]
+
+# sqladmin derives ``identity`` from the model class name when the class is created and ignores one
+# set in the class body, so set it afterwards. The identity is also what the staff roles grant on.
+for _view, _identity in zip(SOURCE_VIEWS, ("source", "source-run", "source-check"), strict=True):
+    _view.identity = _identity

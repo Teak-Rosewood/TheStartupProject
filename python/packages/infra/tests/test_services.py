@@ -831,3 +831,92 @@ def test_fargate_render_passes_security_checks():
     AppStage(app, "t", config=make_config(crawl=CrawlConfig(enabled=True, render="fargate")))
     enable_checks(app)
     app.synth()
+
+
+def test_api_can_start_render_tasks_and_only_those():
+    from tsp.infra import CrawlConfig
+
+    t = backend(crawl=CrawlConfig(enabled=True, render="fargate", max_render_tasks=3))
+    api = next(
+        c
+        for r in t.find_resources("AWS::ECS::TaskDefinition").values()
+        for c in r["Properties"]["ContainerDefinitions"]
+        if any(e["Name"] == "CRAWL_RENDER" for e in c.get("Environment", []))
+        and c["Name"] != "render"
+    )
+    env = {e["Name"]: e["Value"] for e in api["Environment"]}
+    assert env["CRAWL_RENDER_MAX_TASKS"] == "3"
+    for k in (
+        "CRAWL_RENDER_CLUSTER",
+        "CRAWL_RENDER_TASK_DEFINITION",
+        "CRAWL_RENDER_SUBNETS",
+        "CRAWL_RENDER_SECURITY_GROUPS",
+    ):
+        assert k in env
+    statements = [
+        st
+        for p in t.find_resources("AWS::IAM::Policy").values()
+        for st in p["Properties"]["PolicyDocument"]["Statement"]
+        if any(
+            a.startswith(("ecs:RunTask", "ecs:ListTasks")) or a == "iam:PassRole"
+            for a in _actions(st)
+        )
+    ]
+    by_action = {a: st for st in statements for a in _actions(st)}
+    run = by_action["ecs:RunTask"]
+    assert "ArnEquals" in run["Condition"] and "ecs:cluster" in run["Condition"]["ArnEquals"]
+    assert "task-definition" in json.dumps(run["Resource"]) and run["Resource"] != "*"
+    lst = by_action["ecs:ListTasks"]
+    assert lst["Resource"] == "*" and "ecs:cluster" in lst["Condition"]["ArnEquals"]
+    pr = by_action["iam:PassRole"]
+    assert pr["Condition"] == {"StringEquals": {"iam:PassedToService": "ecs-tasks.amazonaws.com"}}
+    assert len(pr["Resource"]) == 2  # the task role and the execution role, nothing broader
+
+
+def test_max_render_tasks_is_bounded():
+    from tsp.infra import CrawlConfig
+
+    for bad in (0, 11):
+        with pytest.raises(ValueError):
+            CrawlConfig(enabled=True, render="fargate", max_render_tasks=bad)
+
+
+def _actions(statement):
+    a = statement["Action"]
+    return [a] if isinstance(a, str) else a
+
+
+def test_render_alarms_exist_only_with_the_render_worker():
+    from tsp.infra import CrawlConfig
+
+    def alarms(**kw):
+        t = backend(**kw)
+        return {
+            r["Properties"]["MetricName"]: r["Properties"]
+            for r in t.find_resources("AWS::CloudWatch::Alarm").values()
+            if r["Properties"].get("Namespace") == "TSP/Crawl"
+        }
+
+    assert alarms() == {} and alarms(crawl=CrawlConfig(enabled=True)) == {}
+    got = alarms(crawl=CrawlConfig(enabled=True, render="fargate", render_queue_alarm_minutes=20))
+    assert set(got) == {"RenderQueueAgeSeconds", "RenderJobsDead", "RenderStartFailures"}
+    assert got["RenderQueueAgeSeconds"]["Threshold"] == 20 * 60
+    assert got["RenderJobsDead"]["Threshold"] == 0
+
+
+def test_api_may_publish_only_the_crawl_metric_namespace():
+    from tsp.infra import CrawlConfig
+
+    t = backend(crawl=CrawlConfig(enabled=True, render="fargate"))
+    mine = [
+        st
+        for p in t.find_resources("AWS::IAM::Policy").values()
+        for st in p["Properties"]["PolicyDocument"]["Statement"]
+        if "cloudwatch:PutMetricData" in _actions(st)
+        and st.get("Condition", {}).get("StringEquals", {}).get("cloudwatch:namespace")
+        == "TSP/Crawl"
+    ]
+    assert len(mine) == 1 and mine[0]["Resource"] == "*"
+    assert backend()  # without crawl nobody gets this grant
+    t0 = backend()
+    assert "TSP/Crawl" not in json.dumps(t0.to_json())
