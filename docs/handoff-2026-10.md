@@ -1,6 +1,6 @@
 # Handoff, October 2026
 
-State of the kit after the K0–K8 build. Local `master` includes K6 (not pushed). Last full gate: 832 tests pass, ruff, mypy, `docs/check_links.py` and `docs/check_modules.py` are clean.
+State of the kit after the K0–K8 build. Local `master` includes K6 (not pushed). Last full gate: 877 tests pass, ruff, mypy, `docs/check_links.py` and `docs/check_modules.py` are clean.
 
 ## Done and merged into master
 
@@ -22,7 +22,7 @@ State of the kit after the K0–K8 build. Local `master` includes K6 (not pushed
 ## Not done
 
 - **K6 follow-ups**: poll creation over HTTP and admin views for polls and takes are not built. Set `ENGAGE_PRICE_IN` and `ENGAGE_PRICE_OUT` (placeholders 1.0 and 5.0 USD per million tokens). `ENGAGE_REQUIRE_SUBSCRIPTION=1` by default.
-- **8b-C leftovers**: `web_search` and `fetch_url` tools for `tsp.ai` tool calling, the 10-page extraction evaluation set, a job that starts the render worker when `crawl.render` has work (today: run the `RunTaskCommand` stack output by hand), crawl alarms. Work in progress is uncommitted in the worktree `/home/blank/projects/TSP-crawl-D` (branch `feat/8b-crawl-D`): `packages/crawl/src/tsp/crawl/tools.py`, `tests/test_crawl_tools.py`, `tests/extraction/`, `packages/ai/tests/test_tool_calls.py` and edits to `ai/client.py` and `crawl/__init__.py`. It is unreviewed and untested by the orchestrator; run its tests before committing or discard it.
+- **8b-C**: finished (web tools, extraction eval, render scaler, alarms). Tool calling works with OpenAI-compatible providers only; the Anthropic adapter does not translate tools yet. The scaler and alarms are tested against fakes and `cdk synth`, not AWS.
 - **K0 B4**: the first live deploy (AWS bootstrap, Google and Apple credentials, DNS) needs the owner. Phase 9 (dev environment, verified costs) follows it.
 - Phase 11 (public API docs and SDK, outbound webhooks, status page) is only planned.
 
@@ -35,7 +35,6 @@ State of the kit after the K0–K8 build. Local `master` includes K6 (not pushed
 
 ## Known issues
 
-- `sqladmin` ignores a class-body `identity`, so admin views in `tsp.sources` and `tsp.trends` get names like `topic-row` and role grants on them do nothing. `tsp.cms` assigns `identity` after class creation; do the same for those two (`sources/admin.py`, `trends/admin.py`).
 - Crawl monthly page cap can be overshot by up to (concurrency − 1) pages.
 - Trends scoring pools regions.
 - Upgrade every job worker before enabling the render queue: a worker from before the `queue` column claims jobs from all queues.
@@ -45,9 +44,9 @@ State of the kit after the K0–K8 build. Local `master` includes K6 (not pushed
 - Local services: `docker compose -p thestartupproject up -d postgres valkey dynamodb`. They stop by themselves now and then; if many tests skip, start them again.
 - Tests: other suites drop shared tables, so give each run its own database: create one `TEMPLATE template0` and set `TSP_TEST_DATABASE_URL=postgresql://postgres:test@127.0.0.1:55432/<name>`. New test packages use a private database and uniquely named test files and helper modules (not `conftest` imports across packages).
 - Gate: `cd python && uv run ruff check . && uv run ruff format --check . && uv run mypy packages apps/api/src && uv run pytest`; from the repository root `make docs-check`.
-- Merging: work branches are merged by hand into the `integration` branch (worktree `/home/blank/projects/TSP-merge`) and `master` is moved to it. Shared files that conflict every time: `python/uv.lock` (keep both sides, then `uv lock`), `python/pyproject.toml` `mypy_path`, `CHANGELOG.md`, `python/apps/api/Dockerfile` (`TSP_MIGRATE_MODULES`), `python/apps/api/tests/api_support.py` (`ALL_TABLES`).
+- Merging: merge each work branch into `master`; shared files that conflict every time: `python/uv.lock` (keep both sides, then `uv lock`), `python/pyproject.toml` `mypy_path`, `CHANGELOG.md`, `python/apps/api/Dockerfile` (`TSP_MIGRATE_MODULES`), `python/apps/api/tests/api_support.py` (`ALL_TABLES`).
 - Nothing has been pushed to a remote.
 
-## Worktrees
+## Branches
 
-`/home/blank/projects/TheStartupProject` holds `feat/k6-a`; `TSP-merge` is `integration` (== master); `TSP-crawl-D` has the uncommitted tools work; the other `TSP-*` worktrees are merged branches and can be removed with `git worktree remove`.
+Only `master` exists, in `/home/blank/projects/TheStartupProject`. All work branches and extra worktrees are merged and removed.
