@@ -64,6 +64,8 @@ def _wildcards(env: EnvConfig) -> dict[str, str]:
         f"IAM5[Resource::arn:aws:ecr:{r}:{a}:repository/{p}-*]": "Push images to this environment's repositories only.",
         f"IAM5[Resource::arn:aws:iam::{a}:role/{p}-*]": "PassRole limited to ECS tasks of this environment.",
         f"IAM5[Resource::arn:aws:s3:::{p}-frontend-{a}/*]": "Sync objects into the frontend bucket only.",
+        f"IAM5[Resource::arn:<AWS::Partition>:ecs:{r}:{a}:task-definition/{p}-crawl-render:*]": "The API starts "
+        "the render task by family, which RunTask resolves to the newest revision; limited to this task definition and cluster.",
     }
 
 

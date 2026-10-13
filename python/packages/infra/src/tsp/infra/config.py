@@ -164,6 +164,12 @@ class CrawlConfig(BaseModel):
     idle_exit_minutes: int = Field(
         default=10, ge=1, le=120
     )  # the task exits when the queue is empty
+    render_queue_alarm_minutes: int = Field(
+        default=15, ge=5, le=240
+    )  # alarm when a page has waited this long for the render worker
+    max_render_tasks: int = Field(
+        default=1, ge=1, le=10
+    )  # the API starts a task when pages wait, up to this many at once
 
     @model_validator(mode="after")
     def _render_needs_crawl(self) -> CrawlConfig:

@@ -110,6 +110,9 @@ class Alarms(Construct):
             description="Host memory above 90%: move to a bigger instance or to RDS",
         )
 
+        if config.crawl.render == "fargate":
+            self._crawl_alarms(config)
+
         budgets.CfnBudget(
             self,
             "Budget",
@@ -140,6 +143,47 @@ class Alarms(Construct):
                     ("FORECASTED", 100),
                 )
             ],
+        )
+
+    def _crawl_alarms(self, config: EnvConfig) -> None:
+        """Browser render worker, from the metrics the API's ``crawl.render_scale`` job publishes."""
+
+        def metric(name: str, stat: str) -> cloudwatch.Metric:
+            return cloudwatch.Metric(
+                namespace="TSP/Crawl",
+                metric_name=name,
+                statistic=stat,
+                period=cdk.Duration.minutes(5),
+            )
+
+        _alarm(
+            self,
+            "CrawlRenderQueueAge",
+            metric("RenderQueueAgeSeconds", "Maximum"),
+            threshold=config.crawl.render_queue_alarm_minutes * 60,
+            periods=2,
+            topic=self.topic,
+            description="Pages have waited for the render worker too long: it is not starting "
+            "(Spot capacity, task failing at start) or not keeping up. See docs/modules/crawl.md",
+        )
+        _alarm(
+            self,
+            "CrawlRenderFailures",
+            metric("RenderJobsDead", "Maximum"),
+            threshold=0,
+            periods=1,
+            topic=self.topic,
+            description="Render jobs died after all retries in the last 24 hours: pages that need "
+            "a browser are not being crawled. Check the render worker logs",
+        )
+        _alarm(
+            self,
+            "CrawlRenderStartFailures",
+            metric("RenderStartFailures", "Sum"),
+            threshold=2,
+            periods=3,
+            topic=self.topic,
+            description="The API could not start the render task (ecs:RunTask failing or no capacity)",
         )
 
 

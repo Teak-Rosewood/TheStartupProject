@@ -146,6 +146,7 @@ class Crawl(Construct):
         self.environment: dict[str, str] = {}
         self.secrets: dict[str, ecs.Secret] = {}
         self.task_definition: ecs.FargateTaskDefinition | None = None
+        self._cluster: ecs.ICluster | None = None
         if c.render != "fargate" or repository is None:
             return
         # Created by hand so the token never passes through CloudFormation (at least 24 random characters).
@@ -159,6 +160,7 @@ class Crawl(Construct):
         self.task_definition = ecs.FargateTaskDefinition(
             self,
             "RenderTask",
+            family=f"{config.prefix}-crawl-render",
             cpu=1024,
             memory_limit_mib=2048,
             runtime_platform=ecs.RuntimePlatform(
@@ -190,6 +192,15 @@ class Crawl(Construct):
         sg.add_egress_rule(ec2.Peer.any_ipv4(), ec2.Port.udp(53), "DNS")
         sg.add_egress_rule(ec2.Peer.any_ipv4(), ec2.Port.tcp(53), "DNS over TCP")
         subnets = ",".join(s.subnet_id for s in vpc.public_subnets)
+        # The API starts render tasks itself (tsp.crawl.render_scaler) when pages are waiting.
+        self._cluster = host.cluster
+        self.environment.update(
+            CRAWL_RENDER_CLUSTER=host.cluster.cluster_name,
+            CRAWL_RENDER_TASK_DEFINITION=self.task_definition.family,
+            CRAWL_RENDER_SUBNETS=subnets,
+            CRAWL_RENDER_SECURITY_GROUPS=sg.security_group_id,
+            CRAWL_RENDER_MAX_TASKS=str(c.max_render_tasks),
+        )
         cdk.CfnOutput(
             self,
             "RunTaskCommand",
@@ -200,4 +211,47 @@ class Crawl(Construct):
                 f'--network-configuration "awsvpcConfiguration={{subnets=[{subnets}],'
                 f'securityGroups=[{sg.security_group_id}],assignPublicIp=ENABLED}}"'
             ),
+        )
+
+    def grant(self, role: iam.IRole) -> None:
+        """Let the API start and list render tasks, and nothing else: ``ecs:RunTask`` on this task
+        definition in this cluster, ``ecs:ListTasks`` in this cluster, ``iam:PassRole`` on the task's own
+        two roles (only to ECS tasks)."""
+        if self.task_definition is None or self._cluster is None:
+            return
+        td = self.task_definition
+        in_cluster = {"ArnEquals": {"ecs:cluster": self._cluster.cluster_arn}}
+        role.add_to_principal_policy(
+            iam.PolicyStatement(
+                actions=["ecs:RunTask"],
+                resources=[
+                    cdk.Stack.of(self).format_arn(
+                        service="ecs",
+                        resource="task-definition",
+                        resource_name=f"{td.family}:*",  # RunTask by family uses the newest revision
+                    )
+                ],
+                conditions=in_cluster,
+            )
+        )
+        role.add_to_principal_policy(
+            iam.PolicyStatement(
+                actions=["ecs:ListTasks"], resources=["*"], conditions=in_cluster
+            )  # list actions take no resource ARN; the condition limits it to this cluster
+        )
+        role.add_to_principal_policy(
+            iam.PolicyStatement(
+                actions=["cloudwatch:PutMetricData"],
+                resources=[
+                    "*"
+                ],  # PutMetricData takes no resource ARN; the condition limits the namespace
+                conditions={"StringEquals": {"cloudwatch:namespace": "TSP/Crawl"}},
+            )
+        )
+        role.add_to_principal_policy(
+            iam.PolicyStatement(
+                actions=["iam:PassRole"],
+                resources=[td.task_role.role_arn, td.obtain_execution_role().role_arn],
+                conditions={"StringEquals": {"iam:PassedToService": "ecs-tasks.amazonaws.com"}},
+            )
         )
