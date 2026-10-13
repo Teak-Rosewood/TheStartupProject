@@ -1,5 +1,5 @@
 version = 1
-revision = 5
+revision = 3
 requires-python = ">=3.13"
 resolution-markers = [
     "python_full_version >= '3.15' and sys_platform == 'win32'",
@@ -5179,7 +5179,7 @@ dependencies = [
 requires-dist = [
     { name = "fastapi", specifier = ">=0.110" },
     { name = "pydantic", extras = ["email"], specifier = ">=2" },
-    { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2" },
+    { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.1.4" },
     { name = "tsp-audit", editable = "packages/audit" },
     { name = "tsp-auth", editable = "packages/auth" },
     { name = "tsp-db", editable = "packages/db" },
@@ -5210,7 +5210,7 @@ requires-dist = [
     { name = "httpx", specifier = ">=0.24" },
     { name = "itsdangerous", specifier = ">=2" },
     { name = "sqladmin", specifier = ">=0.20" },
-    { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2" },
+    { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.1.4" },
     { name = "tsp-accounts", editable = "packages/accounts" },
     { name = "tsp-audit", editable = "packages/audit" },
     { name = "tsp-auth", editable = "packages/auth" },
@@ -5310,7 +5310,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2" },
+    { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.1.4" },
     { name = "tsp-db", editable = "packages/db" },
 ]
 
@@ -5358,7 +5358,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "fastapi", specifier = ">=0.110" },
-    { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2" },
+    { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.1.4" },
     { name = "tsp-audit", editable = "packages/audit" },
     { name = "tsp-db", editable = "packages/db" },
     { name = "tsp-flags", editable = "packages/flags" },
@@ -5381,7 +5381,7 @@ dependencies = [
 requires-dist = [
     { name = "aioboto3", specifier = ">=13" },
     { name = "fastapi", specifier = ">=0.110" },
-    { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2" },
+    { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.1.4" },
     { name = "tsp-audit", editable = "packages/audit" },
     { name = "tsp-db", editable = "packages/db" },
 ]
@@ -5423,7 +5423,7 @@ requires-dist = [
     { name = "httpx", specifier = ">=0.24" },
     { name = "protego", specifier = ">=0.3" },
     { name = "scrapy", marker = "extra == 'scrapy'", specifier = ">=2.11" },
-    { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2" },
+    { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.1.4" },
     { name = "trafilatura", specifier = ">=1.12" },
     { name = "tsp-audit", editable = "packages/audit" },
     { name = "tsp-cache", editable = "packages/cache" },
@@ -5448,7 +5448,7 @@ dependencies = [
 requires-dist = [
     { name = "alembic", specifier = ">=1.16" },
     { name = "asyncpg", specifier = ">=0.29" },
-    { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2" },
+    { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.1.4" },
 ]
 
 [[package]]
@@ -5499,7 +5499,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "fastapi", specifier = ">=0.110" },
-    { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2" },
+    { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.1.4" },
     { name = "tsp-audit", editable = "packages/audit" },
     { name = "tsp-cms", editable = "packages/cms" },
     { name = "tsp-db", editable = "packages/db" },
@@ -5520,7 +5520,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "fastapi", specifier = ">=0.110" },
-    { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2" },
+    { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.1.4" },
     { name = "tsp-audit", editable = "packages/audit" },
     { name = "tsp-db", editable = "packages/db" },
 ]
@@ -5538,7 +5538,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "fastapi", specifier = ">=0.110" },
-    { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2" },
+    { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.1.4" },
     { name = "tsp-db", editable = "packages/db" },
 ]
 
@@ -5559,7 +5559,7 @@ dependencies = [
 requires-dist = [
     { name = "fastapi", specifier = ">=0.110" },
     { name = "httpx", specifier = ">=0.24" },
-    { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2" },
+    { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.1.4" },
     { name = "tsp-audit", editable = "packages/audit" },
     { name = "tsp-cache", editable = "packages/cache" },
     { name = "tsp-db", editable = "packages/db" },
@@ -5621,7 +5621,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2" },
+    { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.1.4" },
     { name = "tsp-db", editable = "packages/db" },
 ]
 
@@ -5638,7 +5638,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "fastapi", specifier = ">=0.110" },
-    { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2" },
+    { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.1.4" },
     { name = "tsp-db", editable = "packages/db" },
 ]
 
@@ -5676,7 +5676,7 @@ requires-dist = [
     { name = "httpx", specifier = ">=0.24" },
     { name = "jinja2", specifier = ">=3" },
     { name = "pyjwt", extras = ["crypto"], specifier = ">=2.8" },
-    { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2" },
+    { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.1.4" },
     { name = "tsp-audit", editable = "packages/audit" },
     { name = "tsp-db", editable = "packages/db" },
     { name = "tsp-jobs", editable = "packages/jobs" },
@@ -5702,7 +5702,7 @@ requires-dist = [
     { name = "fastapi", specifier = ">=0.110" },
     { name = "httpx", specifier = ">=0.24" },
     { name = "reportlab", specifier = ">=4" },
-    { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2" },
+    { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.1.4" },
     { name = "tsp-audit", editable = "packages/audit" },
     { name = "tsp-db", editable = "packages/db" },
 ]
@@ -5721,7 +5721,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "fastapi", specifier = ">=0.110" },
-    { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2" },
+    { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.1.4" },
     { name = "tsp-cache", editable = "packages/cache" },
     { name = "tsp-db", editable = "packages/db" },
 ]
@@ -5744,7 +5744,7 @@ dependencies = [
 requires-dist = [
     { name = "fastapi", specifier = ">=0.110" },
     { name = "pydantic", specifier = ">=2" },
-    { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2" },
+    { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.1.4" },
     { name = "tsp-ai", editable = "packages/ai" },
     { name = "tsp-db", editable = "packages/db" },
     { name = "tsp-flags", editable = "packages/flags" },
@@ -5804,7 +5804,7 @@ requires-dist = [
     { name = "aioboto3", marker = "extra == 's3'", specifier = ">=13" },
     { name = "fastapi", specifier = ">=0.110" },
     { name = "sqladmin", marker = "extra == 'admin'", specifier = ">=0.16" },
-    { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2" },
+    { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.1.4" },
     { name = "tsp-audit", editable = "packages/audit" },
     { name = "tsp-cache", editable = "packages/cache" },
     { name = "tsp-crawl", editable = "packages/crawl" },
@@ -5830,7 +5830,7 @@ dependencies = [
 requires-dist = [
     { name = "aioboto3", specifier = ">=13" },
     { name = "fastapi", specifier = ">=0.110" },
-    { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2" },
+    { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.1.4" },
     { name = "tsp-audit", editable = "packages/audit" },
     { name = "tsp-db", editable = "packages/db" },
 ]
@@ -5858,7 +5858,7 @@ admin = [
 requires-dist = [
     { name = "fastapi", specifier = ">=0.110" },
     { name = "sqladmin", marker = "extra == 'admin'", specifier = ">=0.16" },
-    { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2" },
+    { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.1.4" },
     { name = "tsp-audit", editable = "packages/audit" },
     { name = "tsp-crawl", editable = "packages/crawl" },
     { name = "tsp-db", editable = "packages/db" },
@@ -5898,7 +5898,7 @@ requires-dist = [
     { name = "fastapi", specifier = ">=0.110" },
     { name = "pypdf", marker = "extra == 'parse'", specifier = ">=4" },
     { name = "python-docx", marker = "extra == 'parse'", specifier = ">=1" },
-    { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2" },
+    { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.1.4" },
     { name = "trafilatura", marker = "extra == 'parse'", specifier = ">=1.12" },
     { name = "tsp-ai", editable = "packages/ai" },
     { name = "tsp-audit", editable = "packages/audit" },

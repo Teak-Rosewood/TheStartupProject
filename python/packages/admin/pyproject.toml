@@ -13,7 +13,7 @@ dependencies = [
   "sqladmin>=0.20",
   "itsdangerous>=2",
   "httpx>=0.24",
-  "sqlalchemy[asyncio]>=2",
+  "sqlalchemy[asyncio]>=2.1.4",
   "tsp-auth",
   "tsp-db",
   "tsp-audit",

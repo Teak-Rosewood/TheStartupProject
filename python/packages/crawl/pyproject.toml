@@ -13,7 +13,7 @@ dependencies = [
   "httpx>=0.24",
   "trafilatura>=1.12",
   "protego>=0.3",
-  "sqlalchemy[asyncio]>=2",
+  "sqlalchemy[asyncio]>=2.1.4",
   "fastapi>=0.110",
   "tsp-cache",
   "tsp-db",

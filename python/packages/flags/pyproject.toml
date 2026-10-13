@@ -9,7 +9,7 @@ description = "Feature flags and kill switches with per-user, per-org and per-pl
 readme = "README.md"
 requires-python = ">=3.13"
 license = { text = "MIT" }
-dependencies = ["sqlalchemy[asyncio]>=2", "fastapi>=0.110", "tsp-db", "tsp-audit"]
+dependencies = ["sqlalchemy[asyncio]>=2.1.4", "fastapi>=0.110", "tsp-db", "tsp-audit"]
 
 [tool.uv.sources]
 tsp-db = { workspace = true }
