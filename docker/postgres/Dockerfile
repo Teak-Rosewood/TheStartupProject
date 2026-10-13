@@ -1,6 +1,6 @@
 # PostgreSQL + pgvector + pgBackRest (continuous WAL archiving and scheduled backups to S3).
 # Used for both the database container and its backup sidecar. Built and pushed by CI.
-FROM postgres:16-bookworm
+FROM postgres:18-bookworm
 RUN apt-get update \
  && apt-get install -y --no-install-recommends pgbackrest python3-boto3 postgresql-16-pgvector \
  && rm -rf /var/lib/apt/lists/*
