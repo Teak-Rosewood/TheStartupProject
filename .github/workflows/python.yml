@@ -31,7 +31,7 @@ jobs:
         image: amazon/dynamodb-local
         ports: ["58000:8000"]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v5
       - uses: actions/setup-node@v4
         with: { node-version: "22" } # jsii (aws-cdk-lib) runs on node
@@ -44,7 +44,7 @@ jobs:
   docs:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - run: python3 docs/legal/check_placeholders.py
       - run: python3 docs/check_links.py
       - run: python3 docs/check_modules.py
@@ -53,14 +53,14 @@ jobs:
     # Proves backup + point-in-time restore against an S3 mock, using the exact production image.
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - run: docker build -t tsp-postgres:test docker/postgres
       - run: docker/postgres/test_backup.sh
 
   api-image:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v5
       - name: render the legal documents the image ships with
         run: make legal-render
