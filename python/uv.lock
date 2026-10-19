@@ -1,5 +1,5 @@
 version = 1
-revision = 5
+revision = 3
 requires-python = ">=3.13"
 resolution-markers = [
     "python_full_version >= '3.15' and sys_platform == 'win32'",
@@ -5178,7 +5178,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "fastapi", specifier = ">=0.110" },
-    { name = "pydantic", extras = ["email"], specifier = ">=2" },
+    { name = "pydantic", extras = ["email"], specifier = ">=2.14.1" },
     { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2" },
     { name = "tsp-audit", editable = "packages/audit" },
     { name = "tsp-auth", editable = "packages/auth" },

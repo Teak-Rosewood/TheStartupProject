@@ -9,7 +9,7 @@ description = "Users, organizations, memberships, invites and customer API keys.
 readme = "README.md"
 requires-python = ">=3.13"
 license = { text = "MIT" }
-dependencies = ["sqlalchemy[asyncio]>=2", "fastapi>=0.110", "pydantic[email]>=2", "tsp-db", "tsp-audit", "tsp-auth"]
+dependencies = ["sqlalchemy[asyncio]>=2", "fastapi>=0.110", "pydantic[email]>=2.14.1", "tsp-db", "tsp-audit", "tsp-auth"]
 
 [tool.uv.sources]
 tsp-db = { workspace = true }
