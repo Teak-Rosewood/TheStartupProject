@@ -9,7 +9,7 @@ description = "Usage records and credit-based billing for metered features such 
 readme = "README.md"
 requires-python = ">=3.13"
 license = { text = "MIT" }
-dependencies = ["sqlalchemy[asyncio]>=2", "fastapi>=0.110", "tsp-db"]
+dependencies = ["sqlalchemy[asyncio]>=2", "fastapi>=0.143.3", "tsp-db"]
 
 [tool.uv.sources]
 tsp-db = { workspace = true }

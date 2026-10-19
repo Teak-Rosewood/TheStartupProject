@@ -1,5 +1,5 @@
 version = 1
-revision = 5
+revision = 3
 requires-python = ">=3.13"
 resolution-markers = [
     "python_full_version >= '3.15' and sys_platform == 'win32'",
@@ -50,7 +50,7 @@ members = [
 
 [manifest.dependency-groups]
 dev = [
-    { name = "fastapi", specifier = ">=0.110" },
+    { name = "fastapi", specifier = ">=0.143.3" },
     { name = "hypothesis", specifier = ">=6" },
     { name = "jsonschema", specifier = ">=4" },
     { name = "mypy", specifier = ">=1.10" },
@@ -1551,7 +1551,7 @@ wheels = [
 
 [[package]]
 name = "fastapi"
-version = "0.143.0"
+version = "0.143.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "annotated-doc" },
@@ -1561,9 +1561,9 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "typing-inspection" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/0b/d7/6a8753ab6c1d432dc53703c3e1b92974a94531b7d047c32bbaae461ea844/fastapi-0.143.0.tar.gz", hash = "sha256:1acffe48206a80917cf7dac21992b5c44b25384e8902bf745c1fd9dabcf6c51f", size = 468391, upload-time = "2026-10-08T12:29:46.54Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/38/d5/b0aeb0b303650ac87b0411de4aaf3f901b06042dcc3fb00f30b97b7ff585/fastapi-0.143.3.tar.gz", hash = "sha256:b9ab567ee57afb4454004ce04c889f8f0160ac47946b99795887cd6e88484848", size = 469834, upload-time = "2026-10-16T14:14:13.31Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/bd/f4/27e386913417ad32aae42bba48b0c0cce40e9ff2fba1a871ca2702c37324/fastapi-0.143.0-py3-none-any.whl", hash = "sha256:3e9395fd35276425b61b516a31fdd7c77fe2af83e41b4da22e30696fb1304c5d", size = 144665, upload-time = "2026-10-08T12:29:44.853Z" },
+    { url = "https://files.pythonhosted.org/packages/2c/1a/03d246befcf307219bb2161c97d8c5d314f84125bf7dd245730a28589828/fastapi-0.143.3-py3-none-any.whl", hash = "sha256:75e8bd68e2f52f77d29b2879749c257d64de2d85282d25270caf2bfccce5efe5", size = 144849, upload-time = "2026-10-16T14:14:11.763Z" },
 ]
 
 [[package]]
@@ -5177,7 +5177,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "fastapi", specifier = ">=0.110" },
+    { name = "fastapi", specifier = ">=0.143.3" },
     { name = "pydantic", extras = ["email"], specifier = ">=2" },
     { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2" },
     { name = "tsp-audit", editable = "packages/audit" },
@@ -5243,7 +5243,7 @@ server = [
 [package.metadata]
 requires-dist = [
     { name = "boto3", marker = "extra == 'bedrock'", specifier = ">=1.34" },
-    { name = "fastapi", marker = "extra == 'server'", specifier = ">=0.110" },
+    { name = "fastapi", marker = "extra == 'server'", specifier = ">=0.143.3" },
     { name = "httpx", specifier = ">=0.24" },
     { name = "pydantic", specifier = ">=2" },
     { name = "uvicorn", extras = ["standard"], marker = "extra == 'server'", specifier = ">=0.29" },
@@ -5357,7 +5357,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "fastapi", specifier = ">=0.110" },
+    { name = "fastapi", specifier = ">=0.143.3" },
     { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2" },
     { name = "tsp-audit", editable = "packages/audit" },
     { name = "tsp-db", editable = "packages/db" },
@@ -5380,7 +5380,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "aioboto3", specifier = ">=13" },
-    { name = "fastapi", specifier = ">=0.110" },
+    { name = "fastapi", specifier = ">=0.143.3" },
     { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2" },
     { name = "tsp-audit", editable = "packages/audit" },
     { name = "tsp-db", editable = "packages/db" },
@@ -5419,7 +5419,7 @@ scrapy = [
 requires-dist = [
     { name = "crawl4ai", marker = "extra == 'browser'", specifier = ">=0.4" },
     { name = "docling", marker = "extra == 'pdf'", specifier = ">=2" },
-    { name = "fastapi", specifier = ">=0.110" },
+    { name = "fastapi", specifier = ">=0.143.3" },
     { name = "httpx", specifier = ">=0.24" },
     { name = "protego", specifier = ">=0.3" },
     { name = "scrapy", marker = "extra == 'scrapy'", specifier = ">=2.11" },
@@ -5472,7 +5472,7 @@ test = [
 
 [package.metadata]
 requires-dist = [
-    { name = "fastapi", specifier = ">=0.110" },
+    { name = "fastapi", specifier = ">=0.143.3" },
     { name = "httpx", specifier = ">=0.24" },
     { name = "jinja2", specifier = ">=3" },
     { name = "jsonschema", marker = "extra == 'test'", specifier = ">=4" },
@@ -5498,7 +5498,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "fastapi", specifier = ">=0.110" },
+    { name = "fastapi", specifier = ">=0.143.3" },
     { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2" },
     { name = "tsp-audit", editable = "packages/audit" },
     { name = "tsp-cms", editable = "packages/cms" },
@@ -5519,7 +5519,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "fastapi", specifier = ">=0.110" },
+    { name = "fastapi", specifier = ">=0.143.3" },
     { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2" },
     { name = "tsp-audit", editable = "packages/audit" },
     { name = "tsp-db", editable = "packages/db" },
@@ -5537,7 +5537,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "fastapi", specifier = ">=0.110" },
+    { name = "fastapi", specifier = ">=0.143.3" },
     { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2" },
     { name = "tsp-db", editable = "packages/db" },
 ]
@@ -5557,7 +5557,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "fastapi", specifier = ">=0.110" },
+    { name = "fastapi", specifier = ">=0.143.3" },
     { name = "httpx", specifier = ">=0.24" },
     { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2" },
     { name = "tsp-audit", editable = "packages/audit" },
@@ -5577,7 +5577,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "babel", specifier = ">=2.12" },
-    { name = "fastapi", specifier = ">=0.110" },
+    { name = "fastapi", specifier = ">=0.143.3" },
 ]
 
 [[package]]
@@ -5637,7 +5637,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "fastapi", specifier = ">=0.110" },
+    { name = "fastapi", specifier = ">=0.143.3" },
     { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2" },
     { name = "tsp-db", editable = "packages/db" },
 ]
@@ -5672,7 +5672,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "aioboto3", specifier = ">=13" },
-    { name = "fastapi", specifier = ">=0.110" },
+    { name = "fastapi", specifier = ">=0.143.3" },
     { name = "httpx", specifier = ">=0.24" },
     { name = "jinja2", specifier = ">=3" },
     { name = "pyjwt", extras = ["crypto"], specifier = ">=2.8" },
@@ -5699,7 +5699,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "aioboto3", specifier = ">=13" },
-    { name = "fastapi", specifier = ">=0.110" },
+    { name = "fastapi", specifier = ">=0.143.3" },
     { name = "httpx", specifier = ">=0.24" },
     { name = "reportlab", specifier = ">=4" },
     { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2" },
@@ -5720,7 +5720,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "fastapi", specifier = ">=0.110" },
+    { name = "fastapi", specifier = ">=0.143.3" },
     { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2" },
     { name = "tsp-cache", editable = "packages/cache" },
     { name = "tsp-db", editable = "packages/db" },
@@ -5742,7 +5742,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "fastapi", specifier = ">=0.110" },
+    { name = "fastapi", specifier = ">=0.143.3" },
     { name = "pydantic", specifier = ">=2" },
     { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2" },
     { name = "tsp-ai", editable = "packages/ai" },
@@ -5767,7 +5767,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "fastapi", specifier = ">=0.110" },
+    { name = "fastapi", specifier = ">=0.143.3" },
     { name = "pydantic", specifier = ">=2" },
     { name = "tsp-auth", editable = "packages/auth" },
     { name = "tsp-cache", editable = "packages/cache" },
@@ -5802,7 +5802,7 @@ s3 = [
 [package.metadata]
 requires-dist = [
     { name = "aioboto3", marker = "extra == 's3'", specifier = ">=13" },
-    { name = "fastapi", specifier = ">=0.110" },
+    { name = "fastapi", specifier = ">=0.143.3" },
     { name = "sqladmin", marker = "extra == 'admin'", specifier = ">=0.16" },
     { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2" },
     { name = "tsp-audit", editable = "packages/audit" },
@@ -5829,7 +5829,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "aioboto3", specifier = ">=13" },
-    { name = "fastapi", specifier = ">=0.110" },
+    { name = "fastapi", specifier = ">=0.143.3" },
     { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2" },
     { name = "tsp-audit", editable = "packages/audit" },
     { name = "tsp-db", editable = "packages/db" },
@@ -5856,7 +5856,7 @@ admin = [
 
 [package.metadata]
 requires-dist = [
-    { name = "fastapi", specifier = ">=0.110" },
+    { name = "fastapi", specifier = ">=0.143.3" },
     { name = "sqladmin", marker = "extra == 'admin'", specifier = ">=0.16" },
     { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2" },
     { name = "tsp-audit", editable = "packages/audit" },
@@ -5895,7 +5895,7 @@ s3 = [
 [package.metadata]
 requires-dist = [
     { name = "boto3", marker = "extra == 's3'", specifier = ">=1.34" },
-    { name = "fastapi", specifier = ">=0.110" },
+    { name = "fastapi", specifier = ">=0.143.3" },
     { name = "pypdf", marker = "extra == 'parse'", specifier = ">=4" },
     { name = "python-docx", marker = "extra == 'parse'", specifier = ">=1" },
     { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2" },

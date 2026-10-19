@@ -9,7 +9,7 @@ description = "Message catalogs, language negotiation (URL prefix, cookie, Accep
 readme = "README.md"
 requires-python = ">=3.13"
 license = { text = "MIT" }
-dependencies = ["babel>=2.12", "fastapi>=0.110"]
+dependencies = ["babel>=2.12", "fastapi>=0.143.3"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/tsp"]
