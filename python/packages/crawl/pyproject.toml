@@ -14,7 +14,7 @@ dependencies = [
   "trafilatura>=1.12",
   "protego>=0.3",
   "sqlalchemy[asyncio]>=2",
-  "fastapi>=0.110",
+  "fastapi>=0.143.3",
   "tsp-cache",
   "tsp-db",
   "tsp-audit",

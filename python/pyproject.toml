@@ -10,7 +10,7 @@ dev = [
     "mypy>=1.10",
     "pre-commit>=3.7",
     "hypothesis>=6",
-    "fastapi>=0.110",
+    "fastapi>=0.143.3",
     "uvicorn>=0.29",
     "jsonschema>=4",
 ]

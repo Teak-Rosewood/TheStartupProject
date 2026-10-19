@@ -9,7 +9,7 @@ description = "Editorial backend: items with versions and language variants, rev
 readme = "README.md"
 requires-python = ">=3.13"
 license = { text = "MIT" }
-dependencies = ["sqlalchemy[asyncio]>=2", "fastapi>=0.110", "tsp-db", "tsp-audit", "tsp-jobs", "tsp-flags"]
+dependencies = ["sqlalchemy[asyncio]>=2", "fastapi>=0.143.3", "tsp-db", "tsp-audit", "tsp-jobs", "tsp-flags"]
 
 [tool.uv.sources]
 tsp-db = { workspace = true }
