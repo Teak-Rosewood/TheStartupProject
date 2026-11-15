@@ -3,7 +3,7 @@
 # Built nightly by .github/workflows/live.yml, which renders a real page inside it. Crawl4AI and
 # Playwright come from python/uv.lock; `playwright install` fetches the Chromium build that the
 # locked Playwright version pins, so a lock change is the only thing that moves the browser.
-FROM python:3.13-slim AS build
+FROM python:3.15-slim AS build
 COPY --from=ghcr.io/astral-sh/uv:0.8 /uv /bin/uv
 ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy UV_PYTHON_DOWNLOADS=never
 WORKDIR /app
@@ -12,7 +12,7 @@ COPY packages ./packages
 COPY apps ./apps
 RUN uv sync --frozen --no-dev --no-editable --package tsp-crawl --extra browser
 
-FROM python:3.13-slim
+FROM python:3.15-slim
 RUN useradd --system --uid 10001 --create-home app
 WORKDIR /app
 COPY --from=build /app/.venv /app/.venv
