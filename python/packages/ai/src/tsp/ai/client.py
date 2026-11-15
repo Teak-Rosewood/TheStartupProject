@@ -360,19 +360,21 @@ class ChatNamespace:
                 ):
                     if abort_signal and abort_signal.is_set():
                         break
+                    first_choice = (chunk.get("choices") or [{}])[0]
+                    delta = first_choice.get("delta") or {}
                     chunk_chunk = ChatCompletionChunk(
                         id=f"{chunk_id}-{int((time.time() - start) * 1000)}",
                         model=route.model_id,
                         choices=[
                             StreamChoice(
                                 delta=DeltaMessage(
-                                    content=chunk.get("choices", [{}])[0]
-                                    .get("delta", {})
-                                    .get("content", "")
+                                    content=delta.get("content", ""),
+                                    tool_calls=delta.get("tool_calls") or None,
                                 ),
-                                finish_reason=chunk.get("choices", [{}])[0].get("finish_reason"),
+                                finish_reason=first_choice.get("finish_reason"),
                             )
                         ],
+                        usage=chunk.get("usage"),
                     )
                     yield chunk_chunk
             except ProviderHttpError:

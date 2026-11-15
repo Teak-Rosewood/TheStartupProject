@@ -36,11 +36,40 @@ class AnthropicProvider(BaseProvider):
         return True
 
     def _convert_messages(self, messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        """Convert OpenAI-style messages to Anthropic format."""
-        converted = []
+        """Convert OpenAI-style messages to Anthropic format.
+
+        Assistant ``tool_calls`` become ``tool_use`` blocks and ``role: tool`` messages become
+        ``tool_result`` blocks in a user turn. Consecutive turns with the same role are merged,
+        because Anthropic expects user and assistant turns to alternate.
+        """
+        converted: list[dict[str, Any]] = []
         for msg in messages:
             role = msg.get("role", "")
             content = msg.get("content", "")
+            if role == "tool":
+                result = {
+                    "type": "tool_result",
+                    "tool_use_id": msg.get("tool_call_id", ""),
+                    "content": self._text_blocks(content)
+                    if isinstance(content, list)
+                    else str(content or ""),
+                }
+                self._append_turn(converted, "user", [result])
+                continue
+            if role == "assistant" and msg.get("tool_calls"):
+                blocks = [b for b in self._text_blocks(content) if b["text"]] if content else []
+                for call in msg["tool_calls"]:
+                    fn = call.get("function") or {}
+                    blocks.append(
+                        {
+                            "type": "tool_use",
+                            "id": call.get("id", ""),
+                            "name": fn.get("name", ""),
+                            "input": self._tool_input(fn.get("arguments")),
+                        }
+                    )
+                self._append_turn(converted, "assistant", blocks)
+                continue
             if isinstance(content, list):
                 # Handle multimodal content
                 anthropic_content = []
@@ -65,10 +94,79 @@ class AnthropicProvider(BaseProvider):
                             anthropic_content.append(
                                 {"type": "image", "source": {"type": "url", "url": url_data}}
                             )
-                converted.append({"role": role, "content": anthropic_content})
+                self._append_turn(converted, role, anthropic_content)
             else:
-                converted.append({"role": role, "content": content})
+                self._append_turn(converted, role, content)
         return converted
+
+    @classmethod
+    def _append_turn(cls, turns: list[dict[str, Any]], role: str, content: Any) -> None:
+        """Append a turn, merging it into the previous one when the role repeats."""
+        if turns and turns[-1]["role"] == role:
+            prev = turns[-1]
+            prev["content"] = cls._blocks_of(prev["content"]) + cls._blocks_of(content)
+        else:
+            turns.append({"role": role, "content": content})
+
+    @staticmethod
+    def _blocks_of(content: Any) -> list[dict[str, Any]]:
+        if isinstance(content, list):
+            return content
+        return [{"type": "text", "text": str(content or "")}] if content else []
+
+    @staticmethod
+    def _tool_input(arguments: Any) -> dict[str, Any]:
+        """OpenAI sends tool arguments as a JSON string; Anthropic wants an object."""
+        if isinstance(arguments, dict):
+            return arguments
+        if not arguments:
+            return {}
+        try:
+            value = json.loads(arguments)
+        except (TypeError, ValueError):
+            return {"input": arguments}
+        return value if isinstance(value, dict) else {"input": value}
+
+    @staticmethod
+    def _convert_tools(tools: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """OpenAI function tools become Anthropic tools; native Anthropic tools pass through."""
+        out = []
+        for t in tools:
+            fn = t.get("function") if t.get("type") == "function" else None
+            if fn is None:
+                out.append(dict(t))
+                continue
+            tool: dict[str, Any] = {
+                "name": fn["name"],
+                "input_schema": fn.get("parameters") or {"type": "object", "properties": {}},
+            }
+            if fn.get("description"):
+                tool["description"] = fn["description"]
+            out.append(tool)
+        return out
+
+    @staticmethod
+    def _convert_tool_choice(choice: Any) -> dict[str, Any]:
+        """``"auto"``, ``"none"``, ``"required"`` or ``{"type": "function", "function": {"name"}}``
+        in the OpenAI style; Anthropic-style dicts pass through."""
+        if isinstance(choice, str):
+            return {"type": {"required": "any"}.get(choice, choice)}
+        if isinstance(choice, dict) and choice.get("type") == "function":
+            return {"type": "tool", "name": (choice.get("function") or {}).get("name", "")}
+        return dict(choice)
+
+    FINISH_REASONS = {
+        "end_turn": "stop",
+        "stop_sequence": "stop",
+        "tool_use": "tool_calls",
+        "max_tokens": "length",
+        "pause_turn": "stop",
+        "refusal": "content_filter",
+    }
+
+    @classmethod
+    def _finish_reason(cls, stop_reason: str | None) -> str:
+        return cls.FINISH_REASONS.get(stop_reason or "end_turn", stop_reason or "stop")
 
     @staticmethod
     def _text_blocks(content: Any) -> list[dict[str, Any]]:
@@ -101,7 +199,6 @@ class AnthropicProvider(BaseProvider):
             payload["system"] = system
         if options.get("documents"):
             self._attach_documents(converted, options["documents"], bool(options.get("citations")))
-        self._apply_cache(payload, options.get("cache") or [])
         if "temperature" in options:
             payload["temperature"] = options["temperature"]
         if "top_p" in options:
@@ -109,9 +206,10 @@ class AnthropicProvider(BaseProvider):
         if "stop" in options and options["stop"] is not None:
             payload["stop_sequences"] = options["stop"]
         if options.get("tools"):
-            payload["tools"] = options["tools"]
+            payload["tools"] = self._convert_tools(options["tools"])
         if options.get("tool_choice"):
-            payload["tool_choice"] = options["tool_choice"]
+            payload["tool_choice"] = self._convert_tool_choice(options["tool_choice"])
+        self._apply_cache(payload, options.get("cache") or [])
         return payload
 
     @staticmethod
@@ -199,13 +297,16 @@ class AnthropicProvider(BaseProvider):
                 if resp.status_code >= 400:
                     body = await resp.aread()
                     raise build_error(resp.status_code, body.decode())
+                state: dict[str, Any] = {}
                 async for line in resp.aiter_lines():
-                    if not line or line.startswith(":"):
+                    if not line or line.startswith(":") or line.startswith("event:"):
                         continue
                     if line.startswith("data: "):
                         line = line[6:]
                     if line.strip():
-                        yield self._parse_sse_event(json.loads(line), model_id)
+                        out = self._parse_sse_event(json.loads(line), model_id, state)
+                        if out:
+                            yield out
         except httpx.RequestError as e:
             raise ProviderHttpError(f"Request failed: {e}")
 
@@ -218,8 +319,20 @@ class AnthropicProvider(BaseProvider):
         """Convert Anthropic response to OpenAI format."""
         content = ""
         citations: list[dict[str, Any]] = []
+        tool_calls: list[dict[str, Any]] = []
         for block in data.get("content", []):
-            if block.get("type") == "text":
+            if block.get("type") == "tool_use":
+                tool_calls.append(
+                    {
+                        "id": block.get("id", ""),
+                        "type": "function",
+                        "function": {
+                            "name": block.get("name", ""),
+                            "arguments": json.dumps(block.get("input") or {}),
+                        },
+                    }
+                )
+            elif block.get("type") == "text":
                 content += block.get("text", "")
                 for c in block.get("citations") or []:
                     idx = c.get("document_index")
@@ -243,6 +356,10 @@ class AnthropicProvider(BaseProvider):
         prompt = u.get("input_tokens", 0) + cache_read + cache_write
         completion = u.get("output_tokens", 0)
 
+        message: dict[str, Any] = {"role": "assistant", "content": content}
+        if tool_calls:
+            message["tool_calls"] = tool_calls
+            message["content"] = content or None
         response = {
             "id": f"msg_{data.get('id', '')}",
             "object": "chat.completion",
@@ -250,8 +367,8 @@ class AnthropicProvider(BaseProvider):
             "choices": [
                 {
                     "index": 0,
-                    "message": {"role": "assistant", "content": content},
-                    "finish_reason": data.get("stop_reason", "stop"),
+                    "message": message,
+                    "finish_reason": self._finish_reason(data.get("stop_reason")),
                 }
             ],
             "usage": {
@@ -266,35 +383,85 @@ class AnthropicProvider(BaseProvider):
             response["citations"] = citations
         return response
 
-    def _parse_sse_event(self, event: dict[str, Any], model_id: str) -> dict[str, Any]:
-        """Parse Anthropic SSE event into OpenAI streaming chunk."""
-        if event.get("type") == "content_block_delta":
+    def _parse_sse_event(
+        self, event: dict[str, Any], model_id: str, state: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
+        """Parse one Anthropic SSE event into an OpenAI streaming chunk (``{}`` when there is
+        nothing to emit). ``state`` carries usage and tool-call indexes across events."""
+        state = state if state is not None else {}
+        kind = event.get("type")
+
+        def chunk(delta: dict[str, Any], finish: str | None = None) -> dict[str, Any]:
+            return {
+                "id": f"chatcmpl-{state.get('id', '')}",
+                "object": "chat.completion.chunk",
+                "model": model_id,
+                "choices": [{"index": 0, "delta": delta, "finish_reason": finish}],
+            }
+
+        if kind == "message_start":
+            msg = event.get("message") or {}
+            state["id"] = msg.get("id", "")
+            u = msg.get("usage") or {}
+            state["cache_read"] = u.get("cache_read_input_tokens", 0) or 0
+            state["cache_write"] = u.get("cache_creation_input_tokens", 0) or 0
+            state["input"] = (
+                (u.get("input_tokens", 0) or 0) + state["cache_read"] + state["cache_write"]
+            )
+            state["output"] = u.get("output_tokens", 0) or 0
+            return {}
+        if kind == "content_block_start":
+            block = event.get("content_block") or {}
+            if block.get("type") == "tool_use":
+                tools = state.setdefault("tools", {})
+                index = tools[event.get("index", 0)] = len(tools)
+                return chunk(
+                    {
+                        "tool_calls": [
+                            {
+                                "index": index,
+                                "id": block.get("id", ""),
+                                "type": "function",
+                                "function": {"name": block.get("name", ""), "arguments": ""},
+                            }
+                        ]
+                    }
+                )
+            return {}
+        if kind == "content_block_delta":
             delta = event.get("delta", {})
-            return {
-                "id": f"chatcmpl-{event.get('id', '')}",
-                "object": "chat.completion.chunk",
-                "model": model_id,
-                "choices": [
+            if delta.get("type") == "input_json_delta":
+                index = state.get("tools", {}).get(event.get("index", 0), 0)
+                return chunk(
                     {
-                        "index": 0,
-                        "delta": {"content": delta.get("text", "")},
-                        "finish_reason": None,
+                        "tool_calls": [
+                            {
+                                "index": index,
+                                "function": {"arguments": delta.get("partial_json", "")},
+                            }
+                        ]
                     }
-                ],
-            }
-        elif event.get("type") == "message_stop":
-            return {
-                "id": f"chatcmpl-{event.get('id', '')}",
-                "object": "chat.completion.chunk",
-                "model": model_id,
-                "choices": [
-                    {
-                        "index": 0,
-                        "delta": {},
-                        "finish_reason": "stop",
-                    }
-                ],
-            }
+                )
+            if delta.get("type", "text_delta") == "text_delta":
+                return chunk({"content": delta.get("text", "")})
+            return {}
+        if kind == "message_delta":
+            u = event.get("usage") or {}
+            if u.get("output_tokens") is not None:
+                state["output"] = u["output_tokens"]
+            state["stop_reason"] = (event.get("delta") or {}).get("stop_reason")
+            return {}
+        if kind == "message_stop":
+            out = chunk({}, self._finish_reason(state.get("stop_reason")))
+            if "input" in state:
+                out["usage"] = {
+                    "prompt_tokens": state["input"],
+                    "completion_tokens": state["output"],
+                    "total_tokens": state["input"] + state["output"],
+                    "cache_read_tokens": state["cache_read"],
+                    "cache_write_tokens": state["cache_write"],
+                }
+            return out
         return {}
 
     # -- Message Batches ----------------------------------------------------------------------------

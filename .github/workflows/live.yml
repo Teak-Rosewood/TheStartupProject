@@ -1,0 +1,65 @@
+name: live
+# Nightly: the parts that talk to the outside world, against the real services (python/live).
+# Needs no AWS. Provider keys are optional repository secrets; a test without its key is skipped.
+on:
+  schedule:
+    - cron: "37 2 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: python
+    env:
+      TSP_LIVE: "1"
+      SEARXNG_URL: http://127.0.0.1:58080
+      ANTHROPIC_KEY: ${{ secrets.ANTHROPIC_KEY }}
+      OPENAI_KEY: ${{ secrets.OPENAI_KEY }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+      - run: uv sync --frozen --all-extras
+      - name: Chromium for Crawl4AI (the version the locked Playwright expects)
+        run: uv run playwright install --with-deps chromium
+      - name: start SearXNG with the JSON API on
+        working-directory: ${{ github.workspace }}
+        run: |
+          docker run -d --name searxng -p 58080:8080 \
+            -v "$PWD/python/live/searxng/settings.yml:/etc/searxng/settings.yml:ro" searxng/searxng:latest
+          for _ in $(seq 1 30); do curl -fsS "$SEARXNG_URL/healthz" && break; sleep 2; done
+      - run: uv run pytest live -v -rs --junitxml="$RUNNER_TEMP/live.xml"
+      - name: open or update one issue when the live run fails
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        working-directory: ${{ github.workspace }}
+        run: |
+          URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          TITLE="Live smoke tests failing"
+          N=$(gh issue list --state open --search "in:title \"$TITLE\"" --json number --jq '.[0].number')
+          if [ -n "$N" ]; then gh issue comment "$N" --body "Still failing: $URL"
+          else gh issue create --title "$TITLE" --body "A real service or library changed under us: $URL. Tests: python/live."; fi
+
+  render-image:
+    # The browser render worker image, built and used once on a real page.
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+      - run: docker build -f docker/crawl-render/Dockerfile -t tsp-crawl-render:live python
+      - name: render a page inside the image
+        run: |
+          docker run --rm tsp-crawl-render:live python -c "
+          import asyncio
+          from tsp.crawl.fetch_browser import BrowserFetcher
+          page = asyncio.run(BrowserFetcher().fetch('https://example.com/'))
+          assert 'Example Domain' in page.markdown, page.markdown[:500]
+          print('rendered', len(page.markdown), 'chars')
+          "

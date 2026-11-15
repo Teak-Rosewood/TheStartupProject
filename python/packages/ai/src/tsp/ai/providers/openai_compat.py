@@ -27,7 +27,10 @@ class OpenAICompatProvider(BaseProvider):
         keyless: bool = False,
         force_single_tool_call: bool = False,
         models_url: str | None = None,
+        stream_usage: bool = False,
     ):
+        """``stream_usage``: ask for token usage on the last streamed chunk
+        (``stream_options.include_usage``); only for providers known to accept it."""
         self._platform = platform
         self._name = name
         self._base_url = base_url.rstrip("/")
@@ -37,6 +40,7 @@ class OpenAICompatProvider(BaseProvider):
         self._timeout_ms = timeout_ms
         self._keyless = keyless
         self._force_single_tool_call = force_single_tool_call
+        self._stream_usage = stream_usage
         self._client: httpx.AsyncClient | None = None
 
     @property
@@ -178,6 +182,8 @@ class OpenAICompatProvider(BaseProvider):
         headers = self._auth_headers(api_key)
         payload = self._build_payload(messages, model_id, options)
         payload["stream"] = True
+        if self._stream_usage:
+            payload["stream_options"] = {"include_usage": True}
 
         try:
             async with client.stream("POST", url, json=payload, headers=headers) as response:

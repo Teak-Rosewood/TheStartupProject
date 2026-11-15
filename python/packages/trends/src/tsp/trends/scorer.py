@@ -27,6 +27,7 @@ class Scored:
     topic_id: str | None
     score: float
     components: dict[str, float] = field(default_factory=dict)
+    region: str = ""
 
 
 def daily_value(
@@ -94,7 +95,8 @@ def dedupe(
 ) -> list[Scored]:
     """Merge near-identical candidates, keeping the highest-scoring label. With ``vectors`` (one per
     candidate, from an embedder) similarity is cosine; without, labels match when their normalised
-    words are equal. A merged candidate keeps the larger value for each signal."""
+    words are equal. Candidates from different regions are never merged. A merged candidate keeps the
+    larger value for each signal."""
     order = sorted(range(len(scored)), key=lambda i: -scored[i].score)
     kept: list[int] = []
     out: dict[int, Scored] = {}
@@ -103,7 +105,8 @@ def dedupe(
             (
                 k
                 for k in kept
-                if (
+                if scored[i].region == scored[k].region
+                and (
                     cosine(vectors[i], vectors[k]) >= threshold
                     if vectors is not None
                     else normalise_label(scored[i].label) == normalise_label(scored[k].label)
@@ -114,7 +117,7 @@ def dedupe(
         if match is None:
             kept.append(i)
             c = scored[i]
-            out[i] = Scored(c.key, c.label, c.topic_id, c.score, dict(c.components))
+            out[i] = Scored(c.key, c.label, c.topic_id, c.score, dict(c.components), c.region)
         else:
             for s, z in scored[i].components.items():
                 out[match].components[s] = max(out[match].components.get(s, z), z)

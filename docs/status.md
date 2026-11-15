@@ -19,7 +19,7 @@ The sample API (`python/apps/api`) mounts accounts, admin, compliance, payments,
 
 ## Unverified (tested only with fakes)
 
-- The render worker image (`docker/crawl-render/Dockerfile`) is built in CI but has not rendered a page in AWS. `BrowserFetcher` (Crawl4AI) and `PdfFetcher` (Docling) have opt-in live smoke tests (`TSP_LIVE=1`, nightly `live` workflow).
+- The render worker image (`docker/crawl-render/Dockerfile`) is built and renders a page every night (`live` workflow), but has not run in AWS. `BrowserFetcher` (Crawl4AI) and `PdfFetcher` (Docling) have opt-in live smoke tests (`TSP_LIVE=1`, nightly `live` workflow).
 - `tsp.trends`: GDELT and trending-searches parsers have opt-in live smoke tests; they have not run in production.
 - CDK synthesizes and passes cdk-nag, but nothing has been deployed. The render scaler and alarms are tested against fakes.
 - Browser subresource requests are not filtered inside the render worker; the subnet must block private ranges and the metadata address.

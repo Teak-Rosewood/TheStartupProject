@@ -45,6 +45,7 @@ class CandidateView(_ReadOnly, model=CandidateRow):
         CandidateRow.day,
         CandidateRow.org_id,
         CandidateRow.label,
+        CandidateRow.region,
         CandidateRow.score,
         CandidateRow.status,
     ]

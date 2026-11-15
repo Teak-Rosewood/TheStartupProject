@@ -42,6 +42,7 @@ class FakeChat:
             None,
             Usage(prompt_tokens=1000, completion_tokens=1000, total_tokens=2000),
         )
+        self.stream_usage: Usage | None = None
 
     def create(self, *, model, messages, stream=False, **params):
         self.calls.append((model, messages, stream, params))
@@ -60,11 +61,13 @@ class FakeChat:
         )
 
     async def _stream(self):
-        for piece in ("hel", "lo ", "there!!!"):
+        pieces = ("hel", "lo ", "there!!!")
+        for i, piece in enumerate(pieces):
             yield ChatCompletionChunk(
                 model="llama-3",
                 routed_via="groq/llama-3",
                 choices=[StreamChoice(delta=DeltaMessage(content=piece))],
+                usage=self.stream_usage if i == len(pieces) - 1 else None,
             )
 
 
@@ -307,6 +310,14 @@ def test_streaming_is_sent_in_openai_format_and_charged_afterwards(ctx):
     assert (
         rows[0].status == "ok" and rows[0].units_out == 4 and rows[0].credits == 1 and bal == 99
     )  # estimate: 14 chars ~ 4 tokens
+
+
+def test_streaming_is_charged_from_reported_usage_when_the_provider_sends_it(ctx):
+    ctx.llm.chat.stream_usage = Usage(prompt_tokens=1000, completion_tokens=1000, total_tokens=2000)
+    with ctx.stream("POST", "/api/v1/chat/completions", json={**BODY, "stream": True}) as r:
+        "".join(r.iter_text())
+    bal, rows = state(ctx)
+    assert (rows[0].units_in, rows[0].units_out, rows[0].credits, bal) == (1000, 1000, 4, 96)
 
 
 def test_streaming_errors_before_the_first_chunk_become_real_status_codes(ctx):

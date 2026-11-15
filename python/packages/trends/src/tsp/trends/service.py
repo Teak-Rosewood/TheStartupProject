@@ -200,16 +200,18 @@ class TrendsService:
                 .scalars()
                 .all()
             )
-        groups: dict[tuple[str, str], dict[str, list[Point]]] = {}
+        # One series per topic (or emerging term), signal and region: a spike in one country is
+        # not diluted by quiet in another.
+        groups: dict[tuple[str, str, str], dict[str, list[Point]]] = {}
         for r in rows:
             if r.topic_id is not None and r.topic_id not in topics:
                 continue  # inactive or removed topic
             key = r.topic_id or "term:" + str(r.attrs.get("label", ""))
-            groups.setdefault((key, r.topic_id or ""), {}).setdefault(r.signal, []).append(
-                Point(r.at, float(r.value))
-            )
+            groups.setdefault((key, r.topic_id or "", r.region or ""), {}).setdefault(
+                r.signal, []
+            ).append(Point(r.at, float(r.value)))
         scored: list[Scored] = []
-        for (key, topic_id), by_signal in groups.items():
+        for (key, topic_id, region), by_signal in groups.items():
             z = {
                 name: v
                 for name, pts in by_signal.items()
@@ -220,7 +222,12 @@ class TrendsService:
                 label = topics[topic_id].label if topic_id else key.removeprefix("term:")
                 scored.append(
                     Scored(
-                        key, label, topic_id or None, score, {k: round(v, 3) for k, v in z.items()}
+                        key,
+                        label,
+                        topic_id or None,
+                        score,
+                        {k: round(v, 3) for k, v in z.items()},
+                        region,
                     )
                 )
         scored = scored[:]  # dedupe may reorder
@@ -237,6 +244,7 @@ class TrendsService:
                             CandidateRow.org_id == org_id,
                             CandidateRow.day == day,
                             CandidateRow.label == c.label,
+                            CandidateRow.region == c.region,
                         )
                     )
                 ).scalar_one_or_none()
@@ -246,6 +254,7 @@ class TrendsService:
                         day=day,
                         topic_id=c.topic_id,
                         label=c.label,
+                        region=c.region,
                         score=c.score,
                         components=c.components,
                     )
