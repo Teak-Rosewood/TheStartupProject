@@ -1,6 +1,6 @@
 """tsp.ai: multi-provider LLM client with routing, fallback and verified model catalogs."""
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"  # kept equal to VERSION by scripts/version.py
 
 from .batches import BATCH_DISCOUNT, BatchRequest, BatchResult, BatchStatus
 from .catalog import ModelCatalog, Status

@@ -22,6 +22,22 @@ uv add "../TheStartupProject/python/packages/ai[server]"  # with the HTTP server
 from tsp.ai import LLMClient
 ```
 
+### Pin a released version from Git
+
+For a product in its own repository, depend on a release tag instead of a path. Every package in a release shares one version ([ADR 0002](adr/0002-versioning-and-releases.md)), so use the same tag for all of them:
+
+```toml
+# pyproject.toml of your product
+[project]
+dependencies = ["tsp-cms", "tsp-vector"]
+
+[tool.uv.sources]
+tsp-cms = { git = "https://github.com/Teak-Rosewood/TheStartupProject", tag = "v0.2.0", subdirectory = "python/packages/cms" }
+tsp-vector = { git = "https://github.com/Teak-Rosewood/TheStartupProject", tag = "v0.2.0", subdirectory = "python/packages/vector" }
+```
+
+The kit packages they depend on (`tsp-db`, `tsp-jobs`, ...) come from the same tag automatically. To upgrade, change every `tag` together and read the **Breaking** list for each version in between in [CHANGELOG.md](../CHANGELOG.md).
+
 ## Add a module
 
 Create `python/packages/<name>/` with `pyproject.toml` (`name = "tsp-<name>"`) and `src/tsp/<name>/`. Do not add `src/tsp/__init__.py`: `tsp` is a namespace package shared by all modules. `uv sync` picks the new package up through the workspace glob.

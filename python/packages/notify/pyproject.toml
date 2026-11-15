@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "tsp-notify"
-version = "0.1.0"
+version = "0.2.0"
 description = "Email (SES), push (FCM), SMS (SNS) and in-app notifications with suppression and consent."
 readme = "README.md"
 requires-python = ">=3.13"

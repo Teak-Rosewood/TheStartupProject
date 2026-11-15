@@ -16,6 +16,9 @@ A cloneable kit of building blocks for starting a company's software: pick the m
 | Newsletters, share cards, JSON-LD, sitemaps, AI illustration labels | `tsp-distribute` | [docs/modules/distribute.md](docs/modules/distribute.md) |
 | Languages (catalogs, negotiation, hreflang) | `tsp-i18n` | [docs/modules/i18n.md](docs/modules/i18n.md) |
 | Vector and hybrid search, document ingestion | `tsp-vector` | [docs/modules/vector.md](docs/modules/vector.md) |
+| Website ingestion: safe fetching, robots.txt, sitemaps, extraction, change detection, optional browser rendering, live web tools | `tsp-crawl` | [docs/modules/crawl.md](docs/modules/crawl.md) |
+| External data sources: registry, connectors with fallbacks and cursors, terms-change alerts | `tsp-sources` | [docs/modules/sources.md](docs/modules/sources.md) |
+| Interest signals and a daily candidate list for editors | `tsp-trends` | [docs/modules/trends.md](docs/modules/trends.md) |
 | Paywalls (metered, hard, gift links, pay-per-item) | `tsp-paywall` | [docs/modules/paywall.md](docs/modules/paywall.md) |
 | Knowledge graph: entities and aliases, claims with provenance, validity-dated links, stances, time series | tsp-graph | [docs/modules/graph.md](docs/modules/graph.md) |
 | Durable AI workflows: checkpoints, retries, budgets, traces, human steps, versioned prompts | tsp-pipeline | [docs/modules/pipeline.md](docs/modules/pipeline.md) |
@@ -24,7 +27,7 @@ A cloneable kit of building blocks for starting a company's software: pick the m
 | Web app (React) and landing site (Astro) | `js/packages/web-app`, `js/packages/landing` | [js/README.md](js/README.md) |
 | Mobile starter (Expo, source only) | `js/packages/mobile` | [js/README.md](js/README.md) |
 
-Planned work is in [docs/roadmap.md](docs/roadmap.md).
+Planned work is in [docs/roadmap.md](docs/roadmap.md); what is built, unverified or known to be broken is in [docs/status.md](docs/status.md).
 
 ## Quick start
 

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "tsp-graph"
-version = "0.1.0"
+version = "0.2.0"
 description = "Knowledge graph on Postgres: entities with multilingual aliases, claims with provenance, validity-dated links, stances and numeric time series."
 readme = "README.md"
 requires-python = ">=3.13"

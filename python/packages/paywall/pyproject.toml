@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "tsp-paywall"
-version = "0.1.0"
+version = "0.2.0"
 description = "Metered and hard paywalls: signed anonymous meter, account meter, shared-network-safe device signal, verified crawlers, gift links, pay-per-item credits."
 readme = "README.md"
 requires-python = ">=3.13"

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "tsp-engage"
-version = "0.1.0"
+version = "0.2.0"
 description = "Reader engagement: position polls before and after reading, read receipts, weekly streaks, points and badges, onboarding."
 readme = "README.md"
 requires-python = ">=3.13"

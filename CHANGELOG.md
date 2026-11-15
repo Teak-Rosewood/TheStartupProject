@@ -2,6 +2,20 @@
 Format: [Keep a Changelog](https://keepachangelog.com). Versioning: [SemVer](https://semver.org).
 
 ## Unreleased
+
+## 0.2.0 — 2026-11-15
+First tagged release. From here on, every release is a tag `vX.Y.Z` with one version for all packages ([ADR 0002](docs/adr/0002-versioning-and-releases.md)).
+
+### Fixed
+- The API image installs every module the sample API imports (`tsp-vector`, `tsp-cms`, `tsp-pipeline`, `tsp-engage`, `tsp-paywall` were missing, so the container could not start). CI now imports the app with only its declared dependencies, and the image check fails when the container exits or never serves `/api/health`.
+- Dependencies with known vulnerabilities upgraded (pypdf, twisted, virtualenv, setuptools, pillow 13, soupsieve, certifi, filelock, dnspython, brotli, nltk, opentelemetry-api); the nltk audit exception is gone.
+- `deploy`, `drift` and `backup-drill` skip until an AWS account is connected instead of failing.
+
+### Changed
+- One repository version in `VERSION`, checked by `scripts/version.py`; `release` workflow on tags.
+- GitHub Actions moved off Node 20 (checkout, setup-node, setup-uv v7; configure-aws-credentials v6; CodeQL v4). Dependabot groups minor and patch updates.
+- `docs/status.md` replaces the October handoff as the single status record; the README lists every package and `docs/check_modules.py` checks it.
+
 ### Added
 - `tsp.crawl` (8b): safe website fetching, sources and pages, plan/fetch/refresh jobs, API, optional browser render worker with its own job queue (`tsp.jobs` queue column), CDK `CrawlConfig`.
 - `tsp.ai`: multi-provider LLM client, router, verified model catalog, OpenAI-compatible server.

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "tsp-distribute"
-version = "0.1.0"
+version = "0.2.0"
 description = "Newsletters, share cards, structured data, sitemaps and labelled AI illustrations for published content."
 readme = "README.md"
 requires-python = ">=3.13"
