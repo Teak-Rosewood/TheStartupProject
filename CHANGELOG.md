@@ -16,7 +16,7 @@ First tagged release. From here on, every release is a tag `vX.Y.Z` with one ver
 - Streamed AI gateway calls are charged from the provider's reported usage (Anthropic; OpenAI with `stream_options.include_usage`) instead of an estimate.
 - The API image installs every module the sample API imports (`tsp-vector`, `tsp-cms`, `tsp-pipeline`, `tsp-engage`, `tsp-paywall` were missing, so the container could not start). CI now imports the app with only its declared dependencies, and the image check fails when the container exits or never serves `/api/health`.
 - Dependencies with known vulnerabilities upgraded (pypdf, twisted, virtualenv, setuptools, pillow 13, soupsieve, certifi, filelock, dnspython, brotli, nltk, opentelemetry-api); the nltk audit exception is gone.
-- `deploy`, `drift` and `backup-drill` skip until an AWS account is connected instead of failing.
+- `deploy`, `drift`, `backup-drill` and the pull-request `cdk diff` skip until an AWS account is connected instead of failing.
 
 ### Changed
 - One repository version in `VERSION`, checked by `scripts/version.py`; `release` workflow on tags.

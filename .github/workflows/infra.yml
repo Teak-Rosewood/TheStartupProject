@@ -27,7 +27,8 @@ jobs:
 
   diff:
     # What would change in production. Same-repo PRs only: forks get no secrets or AWS role.
-    if: github.event.pull_request.head.repo.full_name == github.repository
+    # Skipped until an AWS account is connected (docs/aws/09-ci-cd.md sets AWS_DIFF_ROLE_ARN).
+    if: github.event.pull_request.head.repo.full_name == github.repository && vars.AWS_DIFF_ROLE_ARN != ''
     needs: synth
     runs-on: ubuntu-latest
     permissions:
