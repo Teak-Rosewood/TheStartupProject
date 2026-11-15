@@ -26,6 +26,8 @@ The sample API (`python/apps/api`) mounts accounts, admin, compliance, payments,
 
 ## Known issues
 
+- **Row-level security does not bind in the deployed stack yet.** The CDK stack gives the API the same `POSTGRES_USER` the database was created with, which is a superuser, and Postgres skips row-level security for superusers. The policies on `vector_chunks` and the complaints tables are tested against an ordinary role and work, but production needs a separate non-superuser application role (created at database init, used in the API's `DATABASE_URL`, with migrations still run by the owner) before they protect anything. Do this before adding policies to more tables, and run the test suite as that role so a missing `scope_org` call fails a test instead of returning empty results in production.
+
 - The crawl monthly page cap can be overshot by up to (concurrency − 1) pages.
 - Upgrade every job worker before enabling the render queue: a worker from before the `queue` column claims jobs from all queues.
 
