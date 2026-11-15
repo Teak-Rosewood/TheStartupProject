@@ -9,7 +9,7 @@ description = "Cognito JWT verification with JWKS caching."
 readme = "README.md"
 requires-python = ">=3.13"
 license = { text = "MIT" }
-dependencies = ["PyJWT[crypto]>=2.8", "httpx>=0.24", "pydantic>=2"]
+dependencies = ["PyJWT[crypto]>=2.8", "httpx>=0.24", "pydantic>=2.14.3"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/tsp"]
