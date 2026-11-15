@@ -4,10 +4,10 @@ build-backend = "hatchling.build"
 
 [project]
 name = "tsp-api-app"
-version = "0.1.0"
+version = "0.2.0"
 description = "Sample API service built on the tsp.* runtime modules"
 requires-python = ">=3.13"
-dependencies = ["tsp-server", "tsp-db", "tsp-cache", "tsp-nosql", "tsp-auth", "tsp-audit", "tsp-compliance", "tsp-accounts", "tsp-admin", "tsp-payments", "tsp-jobs", "tsp-notify", "tsp-growth", "tsp-flags", "tsp-storage", "tsp-metering", "tsp-ai", "tsp-crawl", "boto3>=1.34"]
+dependencies = ["tsp-server", "tsp-db", "tsp-cache", "tsp-nosql", "tsp-auth", "tsp-audit", "tsp-compliance", "tsp-accounts", "tsp-admin", "tsp-payments", "tsp-jobs", "tsp-notify", "tsp-growth", "tsp-flags", "tsp-storage", "tsp-metering", "tsp-ai", "tsp-crawl", "tsp-vector", "tsp-cms", "tsp-pipeline", "tsp-engage", "tsp-paywall", "boto3>=1.34"]
 
 [project.scripts]
 tsp-api = "tsp_api.main:main"
@@ -31,6 +31,11 @@ tsp-storage = { workspace = true }
 tsp-metering = { workspace = true }
 tsp-ai = { workspace = true }
 tsp-crawl = { workspace = true }
+tsp-vector = { workspace = true }
+tsp-cms = { workspace = true }
+tsp-pipeline = { workspace = true }
+tsp-engage = { workspace = true }
+tsp-paywall = { workspace = true }
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/tsp_api"]

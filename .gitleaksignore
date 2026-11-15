@@ -1,0 +1,5 @@
+# Findings reviewed and accepted as not secrets. One fingerprint per line; keep the reason above it.
+# Example bearer token placeholder in the AI server usage docs (initial commit).
+16209c4f1535c3b7af2783f9d0cef7bbdec280e6:docs/modules/ai.md:curl-auth-header:62
+# Fixed HMAC key used only by the paywall test suite.
+95068f42896e6664eb95f03433f9b53bc8bceb27:python/packages/paywall/tests/paywall_support.py:generic-api-key:6

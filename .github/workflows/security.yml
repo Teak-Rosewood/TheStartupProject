@@ -13,7 +13,7 @@ jobs:
   secrets:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with: { fetch-depth: 0 }
       - uses: gitleaks/gitleaks-action@v2
         env:
@@ -25,14 +25,10 @@ jobs:
       run:
         working-directory: python
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
       - name: audit locked dependencies for known vulnerabilities
-        # PYSEC-2026-3740 (nltk 3.10.3, path checks in model-artifact loaders) has no fixed release.
-        # nltk arrives only through crawl4ai, the optional browser extra used by the render worker,
-        # and nothing in this repository passes caller-controlled paths to nltk. Remove the ignore
-        # once nltk publishes a fix (check monthly).
-        run: uv export --frozen --all-extras --no-hashes --no-emit-workspace > "$RUNNER_TEMP/req.txt" && uvx pip-audit -r "$RUNNER_TEMP/req.txt" --no-deps --disable-pip --ignore-vuln PYSEC-2026-3740
+        run: uv export --frozen --all-extras --no-hashes --no-emit-workspace > "$RUNNER_TEMP/req.txt" && uvx pip-audit -r "$RUNNER_TEMP/req.txt" --no-deps --disable-pip
 
   codeql:
     runs-on: ubuntu-latest
@@ -40,7 +36,7 @@ jobs:
       security-events: write
       contents: read
     steps:
-      - uses: actions/checkout@v4
-      - uses: github/codeql-action/init@v3
+      - uses: actions/checkout@v7
+      - uses: github/codeql-action/init@v4
         with: { languages: python }
-      - uses: github/codeql-action/analyze@v3
+      - uses: github/codeql-action/analyze@v4

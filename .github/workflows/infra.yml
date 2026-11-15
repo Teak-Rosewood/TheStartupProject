@@ -15,9 +15,9 @@ jobs:
       run:
         working-directory: python
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+      - uses: actions/setup-node@v7
         with: { node-version: "22" }
       - run: uv sync --all-extras
       - run: uv run pytest packages/infra -q
@@ -40,11 +40,11 @@ jobs:
     env:
       TSP_ORIGIN_VERIFY: ${{ secrets.TSP_ORIGIN_VERIFY }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+      - uses: actions/setup-node@v7
         with: { node-version: "22" }
-      - uses: aws-actions/configure-aws-credentials@v4
+      - uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ vars.AWS_DIFF_ROLE_ARN }}
           aws-region: ap-south-1

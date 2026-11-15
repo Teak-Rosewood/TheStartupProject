@@ -31,42 +31,56 @@ jobs:
         image: amazon/dynamodb-local
         ports: ["58000:8000"]
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+      - uses: actions/setup-node@v7
         with: { node-version: "22" } # jsii (aws-cdk-lib) runs on node
       - run: uv sync --python ${{ matrix.python }} --all-extras
       - run: uv run ruff check .
       - run: uv run ruff format --check .
       - run: uv run mypy packages apps/api/src
-      - run: uv run pytest --cov=tsp
+      - run: uv run pytest --cov=tsp --cov-report=term
 
   docs:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - run: python3 docs/legal/check_placeholders.py
       - run: python3 docs/check_links.py
       - run: python3 docs/check_modules.py
+      - run: python3 scripts/version.py check
 
   postgres-backup:
     # Proves backup + point-in-time restore against an S3 mock, using the exact production image.
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - run: docker build -t tsp-postgres:test docker/postgres
       - run: docker/postgres/test_backup.sh
 
   api-image:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
       - name: render the legal documents the image ships with
         run: make legal-render
+      - name: the app imports with only its declared dependencies (what the image installs)
+        working-directory: python
+        env: { UV_PROJECT_ENVIRONMENT: "${{ runner.temp }}/api-only" }
+        run: |
+          uv sync --frozen --no-dev --package tsp-api-app
+          "$UV_PROJECT_ENVIRONMENT/bin/python" -c "import tsp_api.main"
       - run: docker build -f python/apps/api/Dockerfile -t tsp-api:test python
       - name: container starts, serves health, and runs as non-root
         run: |
           docker run -d --name api -p 8000:8000 tsp-api:test
-          for _ in $(seq 1 20); do curl -fsS localhost:8000/api/health && break; sleep 1; done
-          test "$(docker exec api id -u)" != 0
+          ok=
+          for _ in $(seq 1 30); do
+            if curl -fsS localhost:8000/api/health; then ok=1; break; fi
+            sleep 1
+          done
+          test "$(docker inspect -f '{{.State.Running}}' api)" = true || { echo "::error::the API container exited"; ok=; }
+          if [ -z "$ok" ]; then docker logs api; exit 1; fi
+          uid="$(docker exec api id -u)"
+          test -n "$uid" && test "$uid" != 0
