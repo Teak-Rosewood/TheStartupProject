@@ -1,10 +1,13 @@
 version: 2
 # Minor and patch updates arrive as one grouped PR per ecosystem each week; majors stay separate
-# so each can be judged on its own (Postgres and Python majors need a migration plan first).
+# so each can be judged on its own.
 updates:
   - package-ecosystem: uv
     directory: /python
     schedule: { interval: weekly }
+    # Update python/uv.lock only. The packages are libraries: their `>=` floors say what they
+    # need, not what is newest, so Dependabot should not raise them.
+    versioning-strategy: lockfile-only
     groups:
       python-minor-and-patch:
         update-types: [minor, patch]
@@ -14,12 +17,25 @@ updates:
     groups:
       actions:
         patterns: ["*"]
+  # Base images: Postgres and Python stay on their current major/minor line (Postgres 16,
+  # Python 3.13) until after the first deploy; each needs a planned upgrade (pgvector, pgBackRest
+  # and a dump and restore for Postgres; requires-python, ruff and mypy targets for Python).
+  # Remove the ignore blocks when you are ready to upgrade. Patch updates still arrive.
   - package-ecosystem: docker
     directory: /docker/postgres
     schedule: { interval: weekly }
+    ignore:
+      - dependency-name: postgres
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: docker
     directory: /python/apps/api
     schedule: { interval: weekly }
+    ignore:
+      - dependency-name: python
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
   - package-ecosystem: docker
     directory: /docker/crawl-render
     schedule: { interval: weekly }
+    ignore:
+      - dependency-name: python
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
