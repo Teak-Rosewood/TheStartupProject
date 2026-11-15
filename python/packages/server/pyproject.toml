@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "tsp-server"
-version = "0.1.0"
+version = "0.2.0"
 description = "FastAPI app factory: health, readiness, origin check, CORS, JSON logs, error envelope."
 readme = "README.md"
 requires-python = ">=3.13"

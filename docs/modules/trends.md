@@ -23,13 +23,14 @@ Write your own by implementing `name` and `collect`. A signal that raises is log
 
 ## Scoring
 
-For each topic and signal, the value for a day is the sum of its points in the 24 hours ending at the end of that UTC day, each halved for every 12 hours of age, so a burst this morning outweighs the same burst last night. The z-score compares that with the same measure for each of the previous 28 days. Details that matter:
+For each topic, signal and region (the `region` of each point; `""` when a signal has none), the value for a day is the sum of its points in the 24 hours ending at the end of that UTC day, each halved for every 12 hours of age, so a burst this morning outweighs the same burst last night. The z-score compares that with the same measure for each of the previous 28 days. Details that matter:
 
 - Fewer than 7 days of history gives no score, not a guess. Days before a signal's first point are treated as unknown, not zero, so a new signal does not look like a spike.
 - The spread has a floor of 10% of the mean (at least 1), so a flat history does not turn a tiny change into a huge score. Scores are capped at 10.
 - A candidate's score is the weighted sum of the **positive** z-scores (`TrendsConfig.weights`, default 1 each). A quiet signal does not cancel a loud one.
 - Only candidates at or above `min_score` (default 2) are written, at most `max_candidates` (50).
-- Near-identical labels are merged, keeping the highest score and the larger value of each signal. With an `embed` function (texts to vectors, for example the `tsp.vector` embedder) similarity is cosine at 0.9; without one, labels merge when their words are identical.
+- Each region is scored on its own, so a spike in one country is not diluted by a large, flat series in another, and a topic trending in two regions is two candidates (`region` on each candidate, in the API and admin).
+- Near-identical labels in the same region are merged, keeping the highest score and the larger value of each signal. With an `embed` function (texts to vectors, for example the `tsp.vector` embedder) similarity is cosine at 0.9; without one, labels merge when their words are identical.
 
 Re-running a day's scan refreshes the scores of candidates still `new` and never touches picked or dismissed ones. `notify(org_id, day, new_candidates)` is called only for candidates the scan created, so a re-run does not notify twice.
 
@@ -45,5 +46,4 @@ Re-running a day's scan refreshes the scores of candidates still `new` and never
 
 ## Limits
 
-- Signal rows are not partitioned by region in scoring: regions are stored but a topic's score pools them.
 - The first scan after setup has little history, so scores appear only once 7 days of points exist.

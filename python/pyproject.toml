@@ -38,3 +38,7 @@ testpaths = ["packages", "apps"]
 
 [tool.ruff.lint.flake8-bugbear]
 extend-immutable-calls = ["fastapi.Depends", "tsp.server.require_groups", "tsp.server.deps.require_groups"]
+
+[tool.coverage.report]
+# 89% on 2026-11-15; the floor stops coverage from falling quietly. Raise it as tests grow.
+fail_under = 87

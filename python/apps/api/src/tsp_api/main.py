@@ -46,9 +46,11 @@ from tsp.crawl import build_router as crawl_router
 from tsp.crawl import register_jobs as crawl_jobs
 from tsp.crawl import register_with_compliance as crawl_compliance
 from tsp.engage import build_router as engage_router
+from tsp.engage import build_staff_router as engage_staff_router
 from tsp.engage import build_submissions_router as engage_submissions_router
 from tsp.engage import register_jobs as engage_jobs
 from tsp.engage import register_with_compliance as engage_compliance
+from tsp.engage.admin import ENGAGE_VIEWS
 from tsp.flags import Flags
 from tsp.flags import build_router as flags_router
 from tsp.growth import api as growth_api
@@ -486,6 +488,9 @@ def build_app() -> FastAPI:
         engage_router(api.account, db_session, engage_cfg, allow_ping=None),
         prefix=settings.api_prefix,
     )
+    app.include_router(
+        engage_staff_router(cms_principal, db_session, engage_cfg), prefix=settings.api_prefix
+    )
     if moderation is not None:
         app.include_router(
             engage_submissions_router(
@@ -544,7 +549,7 @@ def build_app() -> FastAPI:
             compliance=compliance,
             payments=payments,
             flags=flags,
-            extra_views=CMS_VIEWS,
+            extra_views=[*CMS_VIEWS, *ENGAGE_VIEWS],
         )
     return app
 

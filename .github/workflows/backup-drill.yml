@@ -13,10 +13,12 @@ permissions:
 
 jobs:
   drill:
+    # Skipped until an AWS account is connected (docs/aws/09-ci-cd.md sets AWS_DRILL_ROLE_ARN).
+    if: vars.AWS_DRILL_ROLE_ARN != ''
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: aws-actions/configure-aws-credentials@v4
+      - uses: actions/checkout@v7
+      - uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ vars.AWS_DRILL_ROLE_ARN }}
           aws-region: ap-south-1

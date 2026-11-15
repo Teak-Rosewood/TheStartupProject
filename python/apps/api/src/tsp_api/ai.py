@@ -222,18 +222,25 @@ def build_router(gw: AiGateway) -> APIRouter:
         async def frames() -> AsyncIterator[str]:
             out: list[str] = []
             routed = ""
+            reported = None  # usage from the provider's last chunk, when it sends one
             try:
                 chunks = _chain(first, stream)
                 async for chunk in chunks:
                     routed = chunk.routed_via or routed
+                    reported = chunk.usage or reported
                     out.extend(c.delta.content or "" for c in chunk.choices)
                     yield sse_frame(chunk.model_dump(exclude_none=True))
             except ProviderHttpError as e:
                 yield sse_frame(error_body(str(e), "upstream_error"))
             finally:
-                # Streams carry no usage numbers, so charge from an estimate. Shielded so a client that
-                # disconnects mid-stream still pays for what it was sent.
+                # Charge what the provider reported; providers that send no usage on streams are
+                # charged from an estimate. Shielded so a client that disconnects mid-stream still
+                # pays for what it was sent.
                 text_out = "".join(out)
+                tin = reported.prompt_tokens if reported and reported.prompt_tokens else None
+                tout = (
+                    reported.completion_tokens if reported and reported.completion_tokens else None
+                )
                 try:
                     await asyncio.shield(
                         settle(
@@ -241,10 +248,10 @@ def build_router(gw: AiGateway) -> APIRouter:
                             key,
                             model=routed.split("/", 1)[-1] or body.model,
                             provider=routed.split("/", 1)[0] or None,
-                            tin=estimate_tokens(prompt_text),
-                            tout=estimate_tokens(text_out),
+                            tin=tin or estimate_tokens(prompt_text),
+                            tout=tout or estimate_tokens(text_out),
                             started=started,
-                            status="ok" if text_out else "error",
+                            status="ok" if text_out or tout else "error",
                         )
                     )
                 except Exception:

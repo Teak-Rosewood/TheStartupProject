@@ -11,7 +11,7 @@ from sqlalchemy.pool import NullPool
 from tsp.accounts import Accounts
 from tsp.auth import CognitoVerifier
 from tsp.compliance import Compliance
-from tsp.db import normalize_url
+from tsp.db import normalize_url, scope_engine_to_all_orgs
 from tsp.flags import Flags
 from tsp.payments import Payments
 
@@ -42,9 +42,13 @@ def mount_admin(
     their identities need a grant in ``roles.GRANTS`` or only superadmins see them.
 
     Uses its own small engine (no pool: staff traffic is tiny) so it works whatever the API's
-    lifespan does. The OIDC endpoints are mounted first so they win over the admin app.
+    lifespan does. That engine is scoped to all organizations for row-level security. The OIDC endpoints are mounted first so they win over the admin app.
     """
-    engine = engine or create_async_engine(normalize_url(database_url), poolclass=NullPool)
+    if engine is None:
+        engine = create_async_engine(normalize_url(database_url), poolclass=NullPool)
+        # Staff see every organization; tables with row-level security honour this (tsp.db.rls).
+        # A passed-in engine is left alone, so never pass the API's own engine here.
+        scope_engine_to_all_orgs(engine)
     verifier = CognitoVerifier(settings.issuer, [settings.client_id], http=http)
     auth = AdminAuth(settings, verifier, http)
     app.mount(f"{settings.base_path}/oidc", auth.oidc_app())

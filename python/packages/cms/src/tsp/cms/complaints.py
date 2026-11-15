@@ -17,6 +17,7 @@ from typing import Any, Protocol
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from tsp.audit import Actor, record
+from tsp.db import scope_all_orgs, scope_org
 
 from .models import Complaint, ComplaintEvent
 from .service import SYSTEM, CmsError, CmsService
@@ -120,12 +121,14 @@ class ComplaintsDesk:
             )  # fmt: skip
 
     async def get(self, org_id: str, complaint_id: uuid.UUID) -> Complaint:
+        await scope_org(self.s, org_id)
         c = await self.s.get(Complaint, complaint_id)
         if c is None or c.org_id != org_id:
             raise LookupError("no such complaint")
         return c
 
     async def by_reference(self, org_id: str, reference: str) -> Complaint:
+        await scope_org(self.s, org_id)
         rows = (await self.s.execute(select(Complaint).where(Complaint.org_id == org_id))).scalars()
         for c in rows:
             if c.reference == reference:
@@ -147,6 +150,7 @@ class ComplaintsDesk:
     async def listing(
         self, org_id: str, *, status: str | None = None, level: int | None = None, limit: int = 200
     ) -> list[Complaint]:
+        await scope_org(self.s, org_id)
         q = select(Complaint).where(Complaint.org_id == org_id)
         if status == "open":
             q = q.where(Complaint.status.in_(OPEN))
@@ -192,6 +196,7 @@ class ComplaintsDesk:
             body=body, received_at=now, ack_due_at=now + timedelta(hours=cfg.ack_hours),
             resolve_due_at=now + timedelta(days=first.resolve_days), assigned_to=first.handler,
         )  # fmt: skip
+        await scope_org(self.s, org_id)
         self.s.add(c)
         await self.s.flush()
         await self._event(c, "complainant", "received", category)
@@ -329,6 +334,7 @@ class ComplaintsDesk:
         """Warn staff before a deadline and escalate when it is missed. Each warning goes out once per
         deadline; a complaint already at the last level is flagged and given a week at a time."""
         now = self.now()
+        await scope_all_orgs(self.s)  # the sweep covers every organization
         warned: list[uuid.UUID] = []
         escalated: list[uuid.UUID] = []
         open_ = (
@@ -391,6 +397,7 @@ class ComplaintsDesk:
         except ValueError as e:
             raise CmsError("month must look like 2026-03") from e
         end = (start + timedelta(days=32)).replace(day=1)
+        await scope_org(self.s, org_id)
         return list(
             (
                 await self.s.execute(

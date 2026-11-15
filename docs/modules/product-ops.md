@@ -21,7 +21,7 @@ Four small modules that most products need once real customers arrive. All are w
 
 ## AI gateway (`apps/api`, `tsp_api/ai.py`)
 - `POST /api/v1/chat/completions` and `GET /api/v1/models`, OpenAI-compatible, authenticated with a customer API key that has the `chat` scope.
-- Order of checks: kill switch `kill:ai`, key and scope, per-plan requests per minute (`ai_rpm` plan feature, default 20), credit balance, optional moderation hook, then the call. Successful calls are charged by token usage; provider errors are not charged. Streaming responses are charged by estimate once the stream ends.
+- Order of checks: kill switch `kill:ai`, key and scope, per-plan requests per minute (`ai_rpm` plan feature, default 20), credit balance, optional moderation hook, then the call. Successful calls are charged by token usage; provider errors are not charged. Streaming responses are charged once the stream ends, from the provider's reported usage when it sends one and from an estimate otherwise.
 - Provider keys come from environment variables (`GROQ_KEY` and so on). In AWS they are injected from one Secrets Manager secret; see [AI gateway setup](../aws/16-ai-gateway.md).
 - A daily job (04:10) re-probes models and stores the working list in the `ai_catalog` table, so a model that disappears stops being routed to. Set `AI_VERIFY_FREE_ONLY=0` to probe paid models too (this costs a few tokens each).
 

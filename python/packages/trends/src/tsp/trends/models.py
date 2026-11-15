@@ -74,6 +74,9 @@ class CandidateRow(Base):
         Text, ForeignKey("tr_topics.id", ondelete="SET NULL")
     )
     label: Mapped[str] = mapped_column(Text)
+    # Signals are scored per region ("" for signals without one), so the same story trending in two
+    # countries is two candidates.
+    region: Mapped[str] = mapped_column(Text, server_default="")
     score: Mapped[float] = mapped_column(Float)
     components: Mapped[dict[str, float]] = mapped_column(JSONB, server_default="{}")
     status: Mapped[str] = mapped_column(Text, server_default="new")  # new | picked | dismissed
@@ -82,5 +85,7 @@ class CandidateRow(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     __table_args__ = (
-        UniqueConstraint("org_id", "day", "label", name="uq_tr_candidates_org_day_label"),
+        UniqueConstraint(
+            "org_id", "day", "label", "region", name="uq_tr_candidates_org_day_label_region"
+        ),
     )

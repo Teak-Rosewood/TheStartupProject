@@ -1,6 +1,8 @@
 # Browser render worker (docs/modules/crawl.md). Build context: python/
 #   docker build -f ../docker/crawl-render/Dockerfile python/        (linux/arm64 for Graviton Fargate)
-# Not built in CI yet: Chromium and Crawl4AI versions need a first real build to pin.
+# Built nightly by .github/workflows/live.yml, which renders a real page inside it. Crawl4AI and
+# Playwright come from python/uv.lock; `playwright install` fetches the Chromium build that the
+# locked Playwright version pins, so a lock change is the only thing that moves the browser.
 FROM python:3.13-slim AS build
 COPY --from=ghcr.io/astral-sh/uv:0.8 /uv /bin/uv
 ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy UV_PYTHON_DOWNLOADS=never

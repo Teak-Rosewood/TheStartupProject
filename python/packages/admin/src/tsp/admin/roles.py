@@ -32,6 +32,8 @@ GRANTS: dict[str, set[tuple[str, str]]] = {
             "cms-complaint",
             "cms-complaint-event",
             "cms-window",
+            "engage-poll",
+            "engage-take",
         )
         for act in _READ
     }

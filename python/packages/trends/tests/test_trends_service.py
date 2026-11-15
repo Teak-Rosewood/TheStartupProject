@@ -40,7 +40,7 @@ async def seed_topics(svc, db, org=ORG):
     return fryer.id, ramen.id
 
 
-async def seed_signal(db, org, topic_id, signal, today, base=10, label=None, days=28):
+async def seed_signal(db, org, topic_id, signal, today, base=10, label=None, days=28, region=""):
     """``days`` of flat history at ``base`` per day, then ``today`` on the scored day."""
     attrs = {"label": label} if label else {}
     async with db.session() as s:
@@ -50,6 +50,7 @@ async def seed_signal(db, org, topic_id, signal, today, base=10, label=None, day
                     org_id=org,
                     topic_id=topic_id,
                     signal=signal,
+                    region=region,
                     at=END - timedelta(days=d),
                     value=Decimal(today if d == 0 else base + (d % 3)),
                     attrs=attrs,
@@ -87,6 +88,23 @@ async def test_emerging_term_becomes_a_candidate_without_a_topic(db, web):
     await seed_signal(db, ORG, None, "emerging_terms", today=40, label="tamarind candy")
     (row,) = await svc.scan(ORG, DAY)
     assert (row.label, row.topic_id) == ("tamarind candy", None)
+
+
+async def test_regions_are_scored_separately(db, web):
+    """A spike in one region is not diluted by a big, flat series in another, and the same topic
+    trending in two regions is two candidates."""
+    svc = make(db, web)
+    fryer, ramen = await seed_topics(svc, db)
+    await seed_signal(db, ORG, fryer, "feed_volume", today=80, region="IN")
+    await seed_signal(db, ORG, fryer, "feed_volume", today=1000, base=1000, region="US")
+    await seed_signal(db, ORG, ramen, "feed_volume", today=80, region="IN")
+    await seed_signal(db, ORG, ramen, "feed_volume", today=80, region="US")
+    rows = await svc.scan(ORG, DAY)
+    assert sorted((r.label, r.region) for r in rows) == [
+        ("Air fryer", "IN"),
+        ("Ramen", "IN"),
+        ("Ramen", "US"),
+    ]
 
 
 async def test_near_identical_labels_are_merged(db, web):

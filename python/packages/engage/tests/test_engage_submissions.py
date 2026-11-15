@@ -20,10 +20,12 @@ from tsp.engage import (
     FactCheckHook,
     Length,
     Points,
+    Polls,
     Submission,
     SubmissionError,
     Submissions,
     Verdict,
+    build_staff_router,
     build_submissions_router,
     build_workflow,
     default_moderators,
@@ -567,3 +569,25 @@ async def test_old_rejected_takes_are_purged_but_appealed_and_accepted_ones_stay
         assert await purge_rejected(s) == 1
         left = {r.id for r in (await s.execute(select(Submission))).scalars()}
     assert left == {ok.id, appealed.id} and rej.id not in left
+
+
+async def test_staff_create_a_poll_over_http(db):
+    staff_p = {"p": Principal(ORG, "ann", frozenset({"editor"}))}
+
+    async def principal():
+        return staff_p["p"]
+
+    app = create_app(Settings())
+    app.state.db = db
+    app.include_router(build_staff_router(principal, db_session), prefix="/api")
+    body = {"item_id": "pancakes", "kind": "scale1d", "axes": {"x": {"min": 0, "max": 10}}}
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://t") as h:
+        made = await h.post("/api/engage/staff/polls", json=body)
+        assert made.status_code == 201 and made.json()["item_id"] == "pancakes"
+        bad = await h.post("/api/engage/staff/polls", json={**body, "kind": "pie"})
+        assert bad.status_code == 422
+        staff_p["p"] = Principal(ORG, "bo", frozenset({"reviewer"}))
+        assert (await h.post("/api/engage/staff/polls", json=body)).status_code == 403
+    async with db.session() as s:
+        polls = await Polls(s).for_item(ORG, "pancakes")
+        assert [p.kind for p in polls] == ["scale1d"]

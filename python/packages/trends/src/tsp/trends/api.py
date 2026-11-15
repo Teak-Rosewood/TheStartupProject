@@ -18,7 +18,8 @@ class Decision(BaseModel):
 
 def _candidate(c: CandidateRow) -> dict[str, Any]:
     return {
-        "id": c.id, "day": c.day, "label": c.label, "topic_id": c.topic_id, "score": c.score,
+        "id": c.id, "day": c.day, "label": c.label, "region": c.region, "topic_id": c.topic_id,
+        "score": c.score,
         "components": c.components, "status": c.status, "picked_by": c.picked_by, "note": c.note,
     }  # fmt: skip
 

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "tsp-metering"
-version = "0.1.0"
+version = "0.2.0"
 description = "Usage records and credit-based billing for metered features such as AI requests."
 readme = "README.md"
 requires-python = ">=3.13"

@@ -2,6 +2,30 @@
 Format: [Keep a Changelog](https://keepachangelog.com). Versioning: [SemVer](https://semver.org).
 
 ## Unreleased
+
+## 0.2.0 — 2026-11-15
+First tagged release. From here on, every release is a tag `vX.Y.Z` with one version for all packages ([ADR 0002](docs/adr/0002-versioning-and-releases.md)).
+
+### Breaking
+- `tsp.trends` scores each region separately: candidates have a `region` (migration `trends_0002`; the unique key is now day, label and region), so a topic trending in two countries is two candidates. Run the migration before deploying.
+- `tsp.ai` Anthropic responses use OpenAI `finish_reason` values (`stop`, `length`, `tool_calls`, `content_filter`) instead of Anthropic's `end_turn`, `max_tokens`, `tool_use`.
+- `DeltaMessage.tool_calls` is now a list of `DeltaToolCall` (streamed pieces with `index`), not `ChatToolCall`.
+
+### Fixed
+- Tool calling works with Claude: the Anthropic adapter translates tools, `tool_choice`, tool calls and tool results in both directions, streaming included, so `tsp.crawl.run_with_tools` runs on Anthropic.
+- Streamed AI gateway calls are charged from the provider's reported usage (Anthropic; OpenAI with `stream_options.include_usage`) instead of an estimate.
+- The API image installs every module the sample API imports (`tsp-vector`, `tsp-cms`, `tsp-pipeline`, `tsp-engage`, `tsp-paywall` were missing, so the container could not start). CI now imports the app with only its declared dependencies, and the image check fails when the container exits or never serves `/api/health`.
+- Dependencies with known vulnerabilities upgraded (pypdf, twisted, virtualenv, setuptools, pillow 13, soupsieve, certifi, filelock, dnspython, brotli, nltk, opentelemetry-api); the nltk audit exception is gone.
+- `deploy`, `drift`, `backup-drill` and the pull-request `cdk diff` skip until an AWS account is connected instead of failing.
+
+### Changed
+- One repository version in `VERSION`, checked by `scripts/version.py`; `release` workflow on tags.
+- GitHub Actions moved off Node 20 (checkout, setup-node, setup-uv v7; configure-aws-credentials v6; CodeQL v4). Dependabot groups minor and patch updates.
+- Row-level security helpers in `tsp.db` (`scope_org`, `scope_all_orgs`, `org_policy_sql`) and policies on the complaints desk tables (migration `cms_0004`); the staff console engine is scoped to all organizations.
+- `tsp.engage`: staff route `POST /engage/staff/polls` (editor role) and read-only admin views for polls and takes (`tsp.engage.admin.ENGAGE_VIEWS`).
+- Nightly `live` workflow: smoke tests in `python/live` against real pages (Trafilatura), Crawl4AI, Docling, SearXNG, GDELT, trending-searches feeds and the AI providers whose keys are set; builds the render worker image and renders a page in it. Failures open one issue.
+- `docs/status.md` replaces the October handoff as the single status record; the README lists every package and `docs/check_modules.py` checks it.
+
 ### Added
 - `tsp.crawl` (8b): safe website fetching, sources and pages, plan/fetch/refresh jobs, API, optional browser render worker with its own job queue (`tsp.jobs` queue column), CDK `CrawlConfig`.
 - `tsp.ai`: multi-provider LLM client, router, verified model catalog, OpenAI-compatible server.

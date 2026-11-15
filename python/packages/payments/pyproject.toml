@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "tsp-payments"
-version = "0.1.0"
+version = "0.2.0"
 description = "Provider-agnostic payments (Razorpay first, Stripe second), GST invoices, credits ledger."
 readme = "README.md"
 requires-python = ">=3.13"

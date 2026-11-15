@@ -76,7 +76,7 @@ live = LiveTools(ChainFetcher(http), SearxngSearch(os.environ["SEARXNG_URL"]),
 answer = await run_with_tools(client, live, "gpt-4o-mini", [{"role": "user", "content": "..."}], max_rounds=4)
 ```
 
-`run_with_tools` loops until the model answers (at most `max_rounds` tool rounds, then it is asked to answer without tools). Tool calling works with OpenAI-compatible providers. The Anthropic adapter does not yet translate OpenAI-style tools and `tool_use` blocks, so use an OpenAI-compatible provider for this.
+`run_with_tools` loops until the model answers (at most `max_rounds` tool rounds, then it is asked to answer without tools). Tool calling works the same on Anthropic and OpenAI-compatible providers: the Anthropic adapter translates OpenAI-style tools, `tool_choice`, `tool_calls` and `role: tool` results to and from `tool_use` / `tool_result` blocks.
 
 ## Extraction quality set
 

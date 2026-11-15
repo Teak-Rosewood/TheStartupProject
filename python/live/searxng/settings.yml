@@ -1,0 +1,9 @@
+# SearXNG for the live smoke tests only: defaults plus the JSON API that tsp.crawl's web_search uses.
+use_default_settings: true
+server:
+  secret_key: "live-smoke-test-only-not-a-secret"
+  limiter: false
+search:
+  formats:
+    - html
+    - json

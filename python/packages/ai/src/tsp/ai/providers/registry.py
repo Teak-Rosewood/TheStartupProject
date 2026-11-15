@@ -31,6 +31,8 @@ class ProviderSpec:
     free_markers: tuple[str, ...] = (":free", "-free")
     models_url: str | None = None
     keyless: bool = False
+    # Accepts stream_options.include_usage, so streamed calls are billed from real usage.
+    stream_usage: bool = False
 
     @property
     def env_var(self) -> str:
@@ -48,6 +50,7 @@ class ProviderSpec:
             base_url=url,
             keyless=self.keyless,
             models_url=self.models_url,
+            stream_usage=self.stream_usage,
         )
 
 
@@ -56,7 +59,7 @@ def _compat(platform: str, name: str, base_url: str, **kw) -> ProviderSpec:
 
 
 _SPECS = [
-    _compat("openai", "OpenAI", "https://api.openai.com/v1"),
+    _compat("openai", "OpenAI", "https://api.openai.com/v1", stream_usage=True),
     ProviderSpec("anthropic", "Anthropic", native=AnthropicProvider),
     ProviderSpec("google", "Google Gemini", native=GoogleProvider, free_tier_only=True),
     ProviderSpec("cohere", "Cohere", native=CohereProvider),

@@ -62,10 +62,25 @@ class Choice(BaseModel):
     finish_reason: str | None = "stop"
 
 
+class DeltaFunction(BaseModel):
+    name: str | None = None
+    arguments: str | None = None
+
+
+class DeltaToolCall(BaseModel):
+    """A piece of a streamed tool call. The first piece for an ``index`` carries ``id`` and the
+    function name; later pieces append to ``function.arguments``."""
+
+    index: int = 0
+    id: str | None = None
+    type: str | None = None
+    function: DeltaFunction | None = None
+
+
 class DeltaMessage(BaseModel):
     role: str | None = None
     content: str | None = None
-    tool_calls: list[ChatToolCall] | None = None
+    tool_calls: list[DeltaToolCall] | None = None
 
 
 class StreamChoice(BaseModel):
@@ -92,6 +107,7 @@ class ChatCompletionChunk(BaseModel):
     model: str
     choices: list[StreamChoice]
     routed_via: str | None = None
+    usage: Usage | None = None  # on the last chunk, when the provider reports it
 
 
 class ModelInfo(BaseModel):
