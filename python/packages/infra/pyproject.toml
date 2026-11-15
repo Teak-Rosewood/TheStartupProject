@@ -9,7 +9,7 @@ description = "AWS CDK constructs for the TheStartupProject backend stack"
 readme = "README.md"
 requires-python = ">=3.13"
 license = { text = "MIT" }
-dependencies = ["aws-cdk-lib>=2.170", "constructs>=10", "cdk-nag>=2.34", "pydantic>=2"]
+dependencies = ["aws-cdk-lib>=2.170", "constructs>=10", "cdk-nag>=2.34", "pydantic>=2.14.3"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/tsp"]

@@ -3,14 +3,14 @@ members = ["packages/*", "apps/*"]
 
 [dependency-groups]
 dev = [
-    "pytest>=8",
-    "pytest-asyncio>=0.23",
+    "pytest>=9.2.0",
+    "pytest-asyncio>=1.4.1.post1",
     "pytest-cov>=5",
-    "ruff>=0.6",
-    "mypy>=1.10",
-    "pre-commit>=3.7",
-    "hypothesis>=6",
-    "fastapi>=0.110",
+    "ruff>=0.17.4",
+    "mypy>=2.4.1",
+    "pre-commit>=4.7.0",
+    "hypothesis>=6.170.15",
+    "fastapi>=0.162.5",
     "uvicorn>=0.29",
     "jsonschema>=4",
 ]
