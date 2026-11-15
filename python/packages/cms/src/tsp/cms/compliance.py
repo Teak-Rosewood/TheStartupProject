@@ -6,6 +6,7 @@ from typing import Any
 
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
+from tsp.db import scope_all_orgs
 
 from .models import Complaint, ComplaintEvent
 
@@ -22,6 +23,7 @@ def register_complaints_with_compliance(
         email = await email_of(session, sub)
         if not email:
             return []
+        await scope_all_orgs(session)  # a person's complaints may sit in several organizations
         rows = (
             await session.execute(
                 select(Complaint)
@@ -46,6 +48,7 @@ def register_complaints_with_compliance(
         if not email:
             return
         alias = "deleted:" + hashlib.sha256(email.lower().encode()).hexdigest()[:16]
+        await scope_all_orgs(session)
         ids = list(
             (
                 await session.execute(select(Complaint.id).where(Complaint.email == email.lower()))

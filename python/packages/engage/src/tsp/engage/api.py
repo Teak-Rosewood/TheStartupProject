@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Callable
+from datetime import datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -19,6 +20,14 @@ class PingBody(BaseModel):
     dwell: float = Field(ge=0, le=86400)
     scroll: float = Field(ge=0, le=1)
     reached_end: bool = False
+
+
+class PollBody(BaseModel):
+    item_id: str = Field(min_length=1, max_length=200)
+    kind: str  # scale1d | scale2d
+    axes: dict[str, Any]
+    opens_at: datetime | None = None
+    closes_at: datetime | None = None
 
 
 class AnswerBody(BaseModel):
@@ -146,6 +155,45 @@ class ReviewBody(BaseModel):
 class AppealDecisionBody(BaseModel):
     upheld: bool
     resolution: str = Field(min_length=1, max_length=3000)
+
+
+def build_staff_router(
+    principal: Callable[..., Any],
+    session: Callable[..., Any],
+    cfg: EngageConfig | None = None,
+) -> APIRouter:
+    """Staff routes: create a poll on an item. ``principal`` is the CMS staff dependency; the poll
+    is created in the principal's organization and needs the ``editor`` role."""
+    cfg = cfg or EngageConfig()
+    r = APIRouter(prefix="/engage/staff")
+
+    @r.post("/polls", status_code=201)
+    async def create_poll(
+        body: PollBody, p: Any = Depends(principal), s: AsyncSession = Depends(session)
+    ) -> dict[str, Any]:
+        if "editor" not in p.roles:
+            raise HTTPException(403, "needs the editor role")
+        try:
+            poll = await Engage(s, cfg).polls.create(
+                p.org_id,
+                body.item_id,
+                body.kind,
+                body.axes,
+                opens_at=body.opens_at,
+                closes_at=body.closes_at,
+            )
+        except PollError as ex:
+            raise HTTPException(422, str(ex)) from ex
+        return {
+            "id": str(poll.id),
+            "item_id": poll.item_id,
+            "kind": poll.kind,
+            "axes": poll.axes,
+            "opens_at": poll.opens_at,
+            "closes_at": poll.closes_at,
+        }
+
+    return r
 
 
 def build_submissions_router(

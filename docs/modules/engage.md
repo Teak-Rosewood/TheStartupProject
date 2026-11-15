@@ -39,5 +39,8 @@ Polls, reads, streaks, points, badges, onboarding and takes are personal data: t
 
 Rollback: `engage_0002` only adds `en_submissions`; downgrading drops it (and the takes) without touching the K6-A tables.
 
+## Staff
+`build_staff_router(principal, session, cfg)` adds `POST /engage/staff/polls` (`item_id`, `kind`, `axes`, optional `opens_at` and `closes_at`), for a CMS principal with the `editor` role, in the principal's organization. `tsp.engage.admin.ENGAGE_VIEWS` (extra `admin`) are read-only staff console views of polls and takes.
+
 ## Not built
-Creating polls over HTTP (use `Polls.create` from your editor tools), admin views for polls and takes, a points shop, and notifications about moderation results.
+A points shop, and notifications about moderation results.

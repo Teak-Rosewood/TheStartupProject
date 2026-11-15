@@ -12,8 +12,8 @@ The sample API (`python/apps/api`) mounts accounts, admin, compliance, payments,
 
 - **First deploy (K0 B4)**: needs an AWS account, Google and Apple sign-in credentials and DNS ([docs/aws/00-account-setup.md](aws/00-account-setup.md)). Until the repository variables in [09 CI/CD](aws/09-ci-cd.md) are set, the `deploy`, `drift` and `backup-drill` workflows skip.
 - **Dev environment** (phase 9): only `config/prod.py` exists.
-- **K6 follow-ups**: poll creation over HTTP and admin views for polls and takes. `ENGAGE_PRICE_IN` and `ENGAGE_PRICE_OUT` are placeholders (1.0 and 5.0 USD per million tokens). `ENGAGE_REQUIRE_SUBSCRIPTION=1` by default.
-- **Row-level security** exists only on `vector_chunks`; other tenant tables rely on `org_id` filters in queries.
+- **K6 follow-ups**: `ENGAGE_PRICE_IN` and `ENGAGE_PRICE_OUT` are placeholders (1.0 and 5.0 USD per million tokens). `ENGAGE_REQUIRE_SUBSCRIPTION=1` by default.
+- **Row-level security** covers `vector_chunks` and the complaints desk (`cms_complaints`, `cms_complaint_events`). Other tenant tables still rely on `org_id` filters in queries; add policies with `tsp.db.org_policy_sql` in a new migration per package, engage submissions and history next. It only binds a database role that is not a superuser, so run the app as an ordinary role.
 - **Observability**: no tracing or error tracker yet.
 - Phases 10–12 of the [roadmap](roadmap.md).
 

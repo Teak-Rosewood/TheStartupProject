@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from .api import build_router, build_submissions_router
+from .api import build_router, build_staff_router, build_submissions_router
 from .compliance import register_with_compliance
 from .config import BadgeRule, EngageConfig, ReadPolicy
 from .jobs import purge_rejected, register_jobs
@@ -38,6 +38,7 @@ __all__ = [
     "LlmRubric",
     "Moderator",
     "Submission",
+    "build_staff_router",
     "SubmissionError",
     "Submissions",
     "Verdict",

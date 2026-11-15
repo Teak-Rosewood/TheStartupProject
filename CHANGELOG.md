@@ -21,6 +21,8 @@ First tagged release. From here on, every release is a tag `vX.Y.Z` with one ver
 ### Changed
 - One repository version in `VERSION`, checked by `scripts/version.py`; `release` workflow on tags.
 - GitHub Actions moved off Node 20 (checkout, setup-node, setup-uv v7; configure-aws-credentials v6; CodeQL v4). Dependabot groups minor and patch updates.
+- Row-level security helpers in `tsp.db` (`scope_org`, `scope_all_orgs`, `org_policy_sql`) and policies on the complaints desk tables (migration `cms_0004`); the staff console engine is scoped to all organizations.
+- `tsp.engage`: staff route `POST /engage/staff/polls` (editor role) and read-only admin views for polls and takes (`tsp.engage.admin.ENGAGE_VIEWS`).
 - Nightly `live` workflow: smoke tests in `python/live` against real pages (Trafilatura), Crawl4AI, Docling, SearXNG, GDELT, trending-searches feeds and the AI providers whose keys are set; builds the render worker image and renders a page in it. Failures open one issue.
 - `docs/status.md` replaces the October handoff as the single status record; the README lists every package and `docs/check_modules.py` checks it.
 
